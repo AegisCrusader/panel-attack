@@ -137,7 +137,7 @@ do
         --{loc("mm_1_puzzle"), main_select_puzz},
         --{loc("mm_1_time"), main_select_speed_99, {main_time_attack}},
         --{loc("mm_1_vs"), main_local_vs_yourself_setup},
-        {"Training - 1pvs", main_local_training_vs_yourself_setup, {0, 0}},
+        --{"Training - 1pvs", main_local_training_vs_yourself_setup, {0, 0}},
         {"Training - Combo Storm", main_local_training_vs_yourself_setup, {1, 4}},
         {"Training - Factory", main_local_training_vs_yourself_setup, {2, 6}},
         {"Training - Large Garbage", main_local_training_vs_yourself_setup, {73, 6}},
@@ -1079,15 +1079,6 @@ function main_local_training_vs_yourself_setup(height, width)
     
     training.height = height
     training.width = width
-    if training.height == 0 and training.width == 0 then
-        combo_garbage = {{}, {}, {}, {3}, {4},
-              {5}, {6}, {3,4}, {4,4}, {5,5},
-              {5,6}, {6,6}, {6,6,6}, {6,6,6,6},
-              [20]={6,6,6,6,6,6},
-              [27]={6,6,6,6,6,6,6,6}}
-    else
-        combo_garbage = {{},{},{6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6}}
-    end
 
     select_screen.character_select_mode = "1p_vs_yourself"
     return select_screen.main
