@@ -9,7 +9,7 @@ local analytics = require("analytics")
 
 local wait, resume = coroutine.yield, coroutine.resume
 
-local playground, main_endless, make_main_puzzle, main_net_vs_setup,
+local playground, main_endless, make_main_puzzle, main_net_vs_setup, set_custom_garbage_params,
   main_config_input, main_select_puzz,
   main_local_vs_setup, main_set_name, main_local_vs_yourself_setup,
   main_options, main_music_test, 
@@ -32,6 +32,7 @@ main_menu_screen_pos = { 300 + (canvas_width-legacy_canvas_width)/2, 220 + (canv
 wait_game_update = nil
 has_game_update = false
 local arrow_padding = 12
+training = {width = 0, height = 0}
 
 
 P1_win_quads = {}
@@ -132,26 +133,32 @@ do
     match_type_message = ""
     local items = {
         --{"playground", main_select_speed_99, {playground}},
-        {loc("mm_1_endless"), main_select_speed_99, {main_endless}},
-        {loc("mm_1_puzzle"), main_select_puzz},
-        {loc("mm_1_time"), main_select_speed_99, {main_time_attack}},
-        {loc("mm_1_vs"), main_local_vs_yourself_setup},
+        --{loc("mm_1_endless"), main_select_speed_99, {main_endless}},
+        --{loc("mm_1_puzzle"), main_select_puzz},
+        --{loc("mm_1_time"), main_select_speed_99, {main_time_attack}},
+        --{loc("mm_1_vs"), main_local_vs_yourself_setup},
+        {"Training - 1pvs", main_local_training_vs_yourself_setup, {0, 0}},
+        {"Training - Combo Storm", main_local_training_vs_yourself_setup, {1, 4}},
+        {"Training - Factory", main_local_training_vs_yourself_setup, {2, 6}},
+        {"Training - Large Garbage", main_local_training_vs_yourself_setup, {73, 6}},
+        --{"Training - Bullshit Mode", main_local_training_vs_yourself_setup,{-1, -1}},
+        {"Training - Custom", set_custom_garbage_params, {main_local_training_vs_yourself_setup, {training.height, training.width}}},
         --{loc("mm_2_vs_online", "burke.ro"), main_net_vs_setup, {"burke.ro"}},
-        {loc("mm_2_vs_online", "Jon's server"), main_net_vs_setup, {"18.188.43.50"}},
+        --{loc("mm_2_vs_online", "Jon's server"), main_net_vs_setup, {"18.188.43.50"}},
         --{loc("mm_2_vs_online", "betaserver.panelattack.com"), main_net_vs_setup, {"betaserver.panelattack.com"}},
         --{loc("mm_2_vs_online", "(USE ONLY WITH OTHER CLIENTS ON THIS TEST BUILD 025beta)"), main_net_vs_setup, {"18.188.43.50"}},
         --{loc("mm_2_vs_online", "This test build is for offline-use only"), main_select_mode},
         --{loc("mm_2_vs_online", "domi1819.xyz"), main_net_vs_setup, {"domi1819.xyz"}},
         --{loc("mm_2_vs_online", "(development-use only)"), main_net_vs_setup, {"localhost"}},
         --{loc("mm_2_vs_online", "LittleEndu's server"), main_net_vs_setup, {"51.15.207.223"}},
-        {loc("mm_2_vs_online", "server for ranked Ex Mode"), main_net_vs_setup, {"exserver.panelattack.com",49568}},
-        {loc("mm_2_vs_local"), main_local_vs_setup},
+        --{loc("mm_2_vs_online", "server for ranked Ex Mode"), main_net_vs_setup, {"exserver.panelattack.com",49568}},
+        --{loc("mm_2_vs_local"), main_local_vs_setup},
         --{loc("mm_replay_of", loc("mm_1_endless")), main_replay_endless},
         --{loc("mm_replay_of", loc("mm_1_puzzle")), main_replay_puzzle},
         --{loc("mm_replay_of", loc("mm_2_vs")), main_replay_vs},
-        {loc("mm_replay_browser"), replay_browser.main},
+        --{loc("mm_replay_browser"), replay_browser.main},
         {loc("mm_configure"), main_config_input},
-        {loc("mm_set_name"), main_set_name},
+        --{loc("mm_set_name"), main_set_name},
         {loc("mm_options"), options.main},
         {loc("mm_music_test"), main_music_test}
     }
@@ -286,6 +293,72 @@ function main_select_speed_99(next_func, ...)
   end
 end
 
+function set_custom_garbage_params(next_func, ...)
+  local loc_difficulties = {} -- TODO: localize "EX Mode"
+
+  local items = {{"Garbage Height"},
+                {"Garbage Width"},
+                {"Go!", next_func},
+                {"Back", main_select_mode}}
+  local loc_items = {"Height", "Width", loc("go_"), loc("back")}
+
+  local height = 1
+  local width = 1
+  local active_idx = 1
+  local k = K[1]
+  local ret = nil
+  while true do
+    local to_print, to_print2, arrow = "", "", ""
+    for i=1,#items do
+      if active_idx == i then
+        arrow = arrow .. ">"
+      else
+        arrow = arrow .. "\n"
+      end
+      to_print = to_print .. "   " .. loc_items[i] .. "\n"
+    end
+    to_print2 = "                  " .. height .. "\n                  "
+      .. width
+    gprint(arrow, unpack(main_menu_screen_pos))
+    gprint(to_print, unpack(main_menu_screen_pos))
+    gprint(to_print2, unpack(main_menu_screen_pos))
+    wait()
+    variable_step(function()
+      if menu_up(k) then
+        active_idx = wrap(1, active_idx-1, #items)
+      elseif menu_down(k) then
+        active_idx = wrap(1, active_idx+1, #items)
+      elseif menu_right(k) then
+        if active_idx==1 then height = bound(1,height+1,12)
+        elseif active_idx==2 then width = bound(1,width+1,6) end
+      elseif menu_left(k) then
+        if active_idx==1 then height = bound(1,height-1,12)
+        elseif active_idx==2 then width = bound(1,width-1,6) end
+      elseif menu_enter(k) then
+        if active_idx == 3 then
+        training.height = height
+        training.width = width
+          stop_the_music()
+          ret = {items[active_idx][2], {height, width}}
+        elseif active_idx == 4 then
+          ret = {items[active_idx][2], items[active_idx][3]}
+        else
+          active_idx = wrap(1, active_idx + 1, #items)
+        end
+      elseif menu_escape(k) then
+        if active_idx == #items then
+          ret = {items[active_idx][2], items[active_idx][3]}
+        else
+          active_idx = #items
+        end
+      end
+    end)
+    if ret then
+      return unpack(ret)
+    end
+  end
+end
+
 local function use_current_stage()
   stage_loader_load(current_stage)
   stage_loader_wait()
@@ -382,7 +455,6 @@ function main_endless(...)
     -- TODO: proper game over.
       write_replay_file()
       local end_text = loc("rp_score", P1.score, frames_to_time_string(P1.game_stopwatch, true))
-      analytics.game_ends()
       return game_over_transition, {main_select_mode, end_text, P1:pick_win_sfx()}
     end
     variable_step(function() 
@@ -418,7 +490,6 @@ function main_time_attack(...)
     if P1.game_over or (P1.game_stopwatch and P1.game_stopwatch >= time_attack_time*60) then
     -- TODO: proper game over.
       local end_text = loc("rp_score", P1.score, frames_to_time_string(P1.game_stopwatch))
-      analytics.game_ends()
       return game_over_transition, {main_select_mode, end_text, P1:pick_win_sfx()}
     end
     variable_step(function()
@@ -901,7 +972,6 @@ function main_net_vs()
       end
     end
     if end_text then
-      analytics.game_ends()
       undo_stonermode()
       json_send({game_over=true, outcome=outcome_claim})
       local now = os.date("*t",to_UTC(os.time()))
@@ -987,7 +1057,6 @@ function main_local_vs()
     end
     
     if end_text then
-      analytics.game_ends()
       return game_over_transition, {select_screen.main, end_text, winSFX}
     end
   end
@@ -1000,6 +1069,28 @@ function main_local_vs_yourself_setup()
   op_state = nil
   select_screen.character_select_mode = "1p_vs_yourself"
   return select_screen.main
+end
+
+function main_local_training_vs_yourself_setup(height, width)
+    currently_spectating = false
+    my_name = config.name or loc("player_n", "1")
+    op_name = nil
+    op_state = nil
+    
+    training.height = height
+    training.width = width
+    if training.height == 0 and training.width == 0 then
+        combo_garbage = {{}, {}, {}, {3}, {4},
+              {5}, {6}, {3,4}, {4,4}, {5,5},
+              {5,6}, {6,6}, {6,6,6}, {6,6,6,6},
+              [20]={6,6,6,6,6,6},
+              [27]={6,6,6,6,6,6,6,6}}
+    else
+        combo_garbage = {{},{},{6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6}}
+    end
+
+    select_screen.character_select_mode = "1p_vs_yourself"
+    return select_screen.main
 end
 
 function main_local_vs_yourself()
@@ -1023,7 +1114,6 @@ function main_local_vs_yourself()
         end
       end)
     if end_text then
-      analytics.game_ends()
       return game_over_transition, {select_screen.main, end_text, P1:pick_win_sfx()}
     end
   end
@@ -1757,6 +1847,7 @@ function game_over_transition(next_func, text, winnerSFX, timemax)
         set_music_fade_percentage(1) -- reset the music back to normal config volume
         stop_all_audio()
         SFX_GameOver_Play = 0
+        analytics.game_ends()
         ret = {next_func}
       end
       t = t + 1

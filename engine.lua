@@ -1718,6 +1718,16 @@ end
 
 -- drops a width x height garbage.
 function Stack.drop_garbage(self, width, height, metal)
+  if training.height > 0 then
+    height = training.height
+  elseif training.height < 0  then
+    height = math.random(1,2)
+  end
+  if training.width > 0 then
+      width = training.width
+  elseif training.width < 0 then
+    width = math.random(1,6)
+  end
   local spawn_row = self.height + 1
 
   -- Do one last check for panels in the way.
