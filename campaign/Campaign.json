@@ -1,0 +1,78 @@
+{
+    "name": "Developer Fights",
+    "description": "U fight against the devs lol",
+    "author": "Shosoul",
+    "vs level": 10,
+    "matches": [
+        {
+            "hp": 12345,
+            "character id": "shosoul_jamesvanboxtel",
+            "stage id": "shosoul_finaldestination",
+            "intro text": "Something I say when it's my turn to be played against, probably before character select",
+            "win text": "Something I say when I win against the player",
+            "lose text": "Something I say when I lose against the player",
+            "attack pattern": [
+                {
+                    "delay frames": 180,
+                    "garbage": [
+                        {
+                            "height": 1,
+                            "width": 3,
+                            "metal": false
+                        },
+                        {
+                            "height": 1,
+                            "width": 3,
+                            "metal": false
+                        }
+                    ]
+                },
+                {
+                    "delay frames": 300,
+                    "garbage": [
+                        {
+                            "height": 1,
+                            "width": 6,
+                            "metal": false
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "hp": 69420,
+            "character id": "shosoul_shosoul",
+            "stage id": "shosoul_finaldestination",
+            "intro text": "Something I say when it's my turn to be played against, probably before character select",
+            "win text": "Something I say when I win against the player",
+            "lose text": "Something I say when I lose against the player",
+            "attack pattern": [
+                {
+                    "delay frames": 180,
+                    "garbage": [
+                        {
+                            "height": 1,
+                            "width": 3,
+                            "metal": false
+                        },
+                        {
+                            "height": 1,
+                            "width": 3,
+                            "metal": false
+                        }
+                    ]
+                },
+                {
+                    "delay frames": 300,
+                    "garbage": [
+                        {
+                            "height": 1,
+                            "width": 6,
+                            "metal": false
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
