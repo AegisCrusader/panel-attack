@@ -13,7 +13,7 @@ local GARBAGE_DELAY = 60
 local GARBAGE_TRANSIT_TIME = 90
 local clone_pool = {}
 local current_music_is_casual = false -- must be false so that casual music start playing
-
+true_apm = -1
 -- Represents the full panel stack for one player
 Stack =
   class(
@@ -1367,7 +1367,11 @@ function Stack.PdP(self)
     else
       self.cur_row = bound(1, self.cur_row, self.top_cur_row)
     end
-
+    if replay[self.match.mode].in_buf then
+      local buffer = replay[self.match.mode].in_buf
+      true_apm = countdiffs(buffer:sub(math.max(buffer:len()-300, 0), buffer:len()))
+    end
+    
     if self.cur_timer ~= self.cur_wait_time then
       self.cur_timer = self.cur_timer + 1
     end

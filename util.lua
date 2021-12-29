@@ -314,6 +314,16 @@ function uncompress_input_string(inputs)
     return uncompressed_inputs
   end
 end
+--count the differences in text
+function countdiffs(in_buf)
+  local count = 0
+  for i = #in_buf, 2, -1 do
+    if in_buf:sub(i,i) ~= in_buf:sub(i-1,i-1) then
+      count = count + 1
+    end
+  end
+  return count*6
+end
 
 function dump(o)
   if type(o) == "table" then

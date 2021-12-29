@@ -799,7 +799,8 @@ function Stack.drawAnalyticData(self, analytic, x, y)
     icon_width, icon_height = themes[config.theme].images.IMG_apm:getDimensions()
     draw(themes[config.theme].images.IMG_apm, x / GFX_SCALE, y / GFX_SCALE, 0, iconSize / icon_width, iconSize / icon_height)
   end
-  gprintf(analytic.lastAPM .. "/m", x + iconToTextSpacing, y + 0, canvas_width, "left", nil, 1, fontIncrement)
+  true_apm = string.format("%0.0f", round(true_apm, 0))
+  gprintf("(".. analytic.lastAPM .."|"..true_apm..")" .. "/m", x + iconToTextSpacing, y + 0, canvas_width, "left", nil, 1, fontIncrement)
 
   y = y + nextIconIncrement
 
