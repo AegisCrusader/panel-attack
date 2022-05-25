@@ -72,7 +72,7 @@ function replay_browser.main()
     local file, error_msg = love.filesystem.read(replay_browser.filename)
 
     if file == nil then
-      print(loc("rp_browser_error_loading", error_msg))
+      --print(loc("rp_browser_error_loading", error_msg))
       return false
     end
 
@@ -111,10 +111,10 @@ function replay_browser.main()
         elseif file_info.type == "directory" then
           replay_browser_update(replay_browser.current_path .. replay_browser.path_contents[replay_browser.cursor_pos] .. "/")
         else
-          print(loc("rp_browser_error_unknown_filetype", file_info.type, replay_browser.selection))
+          --print(loc("rp_browser_error_unknown_filetype", file_info.type, replay_browser.selection))
         end
       else
-        print(loc("rp_browser_error_file_not_found", replay_browser.selection))
+        --print(loc("rp_browser_error_file_not_found", replay_browser.selection))
       end
     end
   end
@@ -169,7 +169,9 @@ function replay_browser.main()
       gprint(replay_browser.filename, replay_browser.menu_x - 150, replay_browser.menu_y - 40 + replay_browser.menu_h)
 
       if replay.vs then
-        local twoPlayerVs = replay.vs.O and string.len(replay.vs.O) > 0
+        -- This used to be calculated based on the length of "O", but that no longer always exists.
+        -- "I" will always exist for two player vs
+        local twoPlayerVs = replay.vs.I and string.len(replay.vs.I) > 0
         local modeText
         if twoPlayerVs then
           modeText = loc("rp_browser_info_2p_vs")

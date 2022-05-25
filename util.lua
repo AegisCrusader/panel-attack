@@ -124,6 +124,22 @@ function deepcpy(tab)
   return ret
 end
 
+function table_to_string(tab)
+  local ret = ""
+  for k,v in pairs(tab) do
+    if type(v) == "table" then
+      ret = ret..k.." table:\n"..table_to_string(v).."\n"
+    else
+      ret = ret..k.." "..tostring(v).."\n"
+    end
+  end
+  return ret
+end
+
+function sign(x)
+  return (x<0 and -1) or 1
+end
+
 --Note: this round() doesn't work with negative numbers
 function round(positive_decimal_number, number_of_decimal_places)
   if not number_of_decimal_places then
@@ -239,7 +255,8 @@ function uncompress_input_string(inputs)
   end
 end
 
-function dump(o)
+function dump(o, includeNewLines)
+  includeNewLines = includeNewLines or false
   if type(o) == "table" then
     local s = "{ "
     for k, v in pairs(o) do
@@ -247,6 +264,9 @@ function dump(o)
         k = '"' .. k .. '"'
       end
       s = s .. "[" .. k .. "] = " .. dump(v) .. ","
+      if includeNewLines then
+        s = s .. "\n"
+      end
     end
     return s .. "} "
   else
