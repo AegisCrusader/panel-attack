@@ -329,7 +329,10 @@ function Stack.send_controls(self)
   end
 
   local playerNumber = self.which
-  local to_send = base64encode[
+  while self.planned_moves == "" do
+    self.planned_moves = self:find_cpu_move(math.random(1, 12), math.random(1, 6))
+  end
+  --[[local to_send = base64encode[
     (player_raise(playerNumber) and 32 or 0) + 
     (player_swap(playerNumber) and 16 or 0) + 
     (player_up(playerNumber) and 8 or 0) + 
@@ -337,6 +340,11 @@ function Stack.send_controls(self)
     (player_left(playerNumber) and 2 or 0) + 
     (player_right(playerNumber) and 1 or 0) + 1
     ]
+    ]]
+    local to_send = string.sub(self.planned_moves, 1,1)
+    print(self.planned_moves, to_send)
+  self.planned_moves = string.sub(self.planned_moves, 2)
+  
 
   if TCP_sock then
     net_send("I" .. to_send)
