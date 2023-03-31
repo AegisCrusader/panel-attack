@@ -2,16 +2,15 @@ local logger = require("logger")
 local select_screen = require("select_screen.select_screen")
 local replay_browser = require("replay_browser")
 local options = require("options")
-local utf8 = require("utf8")
+local utf8 = require("utf8Additions")
 local analytics = require("analytics")
 local main_config_input = require("config_inputs")
+require("replay")
 
 local wait, resume = coroutine.yield, coroutine.resume
 
 local main_endless_select, main_timeattack_select, makeSelectPuzzleSetFunction, main_net_vs_setup, main_select_puzz, main_local_vs_setup, main_set_name, main_local_vs_yourself_setup, exit_game, training_setup
 
-local PLAYING = "playing" -- room states
-local CHARACTERSELECT = "character select" -- room states
 connection_up_time = 0 -- connection_up_time counts "E" messages, not seconds
 logged_in = 0
 GAME.connected_server_ip = nil -- the ip address of the server you are connected to
@@ -54,7 +53,7 @@ function fmainloop()
   love.filesystem.createDirectory("themes")
   love.filesystem.createDirectory("stages")
   love.filesystem.createDirectory("training")
-  if #love.filesystem.getDirectoryItems("training") == 0 then
+  if #FileUtil.getFilteredDirectoryItems("training") == 0 then
     recursive_copy("default_data/training", "training")
   end
   read_attack_files("training")
@@ -69,10 +68,25 @@ function fmainloop()
     -- Run all unit tests now that we have everything loaded
     GAME:drawLoadingString("Running Unit Tests")
     wait()
+    -- Small tests (unit tests)
     require("PuzzleTests")
     require("ServerQueueTests")
     require("StackTests")
+    require("tests.JsonEncodingTests")
+    require("tests.NetworkProtocolTests")
+    require("tests.ThemeTests")
+    require("tests.TouchDataEncodingTests")
+    require("tests.utf8AdditionsTests")
     require("table_util_tests")
+    require("utilTests")
+    -- Medium level tests (integration tests)
+    require("tests.StackReplayTests")
+    require("tests.StackRollbackReplayTests")
+    require("tests.StackTouchReplayTests")
+    -- Performance Tests
+    if PERFORMANCE_TESTS_ENABLED then
+      require("tests/performanceTests")
+    end
   end
 
   local func, arg = main_title, nil
@@ -140,6 +154,7 @@ function main_title()
     local lastTime = leftover_time
     wait()
     totalTime = totalTime + (leftover_time - lastTime)
+
     variable_step(
       function()
         if increment > 0 and percent >= 1 then
@@ -175,8 +190,7 @@ do
     undo_stonermode()
     GAME.backgroundImage = themes[config.theme].images.bg_main
     GAME.battleRoom = nil
-    GAME.input:clearInputConfigurationsForPlayers()
-    GAME.input:requestPlayerInputConfigurationAssignments(1)
+    GAME.input:allowAllInputConfigurations()
     reset_filters()
     local menu_x, menu_y = unpack(themes[config.theme].main_menu_screen_pos)
     local main_menu
@@ -202,22 +216,18 @@ do
       {loc("mm_1_time"), main_timeattack_select},
       {loc("mm_1_vs"), main_local_vs_yourself_setup},
       {loc("mm_1_training"), training_setup},
-      --{loc("mm_2_vs_online", "burke.ro"), main_net_vs_setup, {"burke.ro"}},
       {loc("mm_2_vs_online", ""), main_net_vs_setup, {"18.188.43.50"}},
-      --{loc("mm_2_vs_online", "Shosoul's Server"), main_net_vs_setup, {"149.28.227.184"}},
-      --{loc("mm_2_vs_online", ""), main_net_vs_setup, {"betaserver.panelattack.com", 59569}},
-      --{loc("mm_2_vs_online", "(USE ONLY WITH OTHER CLIENTS ON THIS TEST BUILD 025beta)"), main_net_vs_setup, {"18.188.43.50"}},
-      --{loc("mm_2_vs_online", "This test build is for offline-use only"), main_select_mode},
-      --{loc("mm_2_vs_online", "domi1819.xyz"), main_net_vs_setup, {"domi1819.xyz"}},
-      --{loc("mm_2_vs_online", "(development-use only)"), main_net_vs_setup, {"localhost"}},
-      --{loc("mm_2_vs_online", "LittleEndu's server"), main_net_vs_setup, {"51.15.207.223"}},
-      --{loc("mm_2_vs_online", "server for ranked Ex Mode"), main_net_vs_setup, {"exserver.panelattack.com", 49568}},
       {loc("mm_2_vs_local"), main_local_vs_setup},
       {loc("mm_replay_browser"), replay_browser.main},
       {loc("mm_configure"), main_config_input},
       {loc("mm_set_name"), main_set_name},
       {loc("mm_options"), options.main}
     }
+
+    if config.debugShowServers then
+      table.insert(items, 7, {"Beta Server", main_net_vs_setup, {"betaserver.panelattack.com", 59569}})
+      table.insert(items, 8, {"Localhost Server", main_net_vs_setup, {"localhost"}})
+    end
 
     if TESTS_ENABLED then
       table.insert(items, 6, {"Vs Computer", main_local_vs_computer_setup})
@@ -227,7 +237,7 @@ do
     for i = 1, #items do
       main_menu:add_button(items[i][1], selectFunction(items[i][2], items[i][3]), goEscape)
     end
-    main_menu:add_button(loc("mm_fullscreen", "(LAlt+Enter)"), fullscreen, goEscape)
+    main_menu:add_button(loc("mm_fullscreen", "(Alt+Enter)"), fullscreen, goEscape)
     main_menu:add_button(loc("mm_quit"), exit_game, exit_game)
 
     while true do
@@ -257,6 +267,17 @@ do
         if has_game_update then
           menu_draw(panels[config.panels].images.classic[1][1], 1262, 685)
         end
+      end
+
+      local runningFromAutoUpdater = GAME_UPDATER_GAME_VERSION ~= nil
+      local autoUpdaterOutOfDate = (GAME_UPDATER_VERSION == nil or GAME_UPDATER_VERSION < 1.1)
+      if runningFromAutoUpdater and autoUpdaterOutOfDate then
+        local downloadLink = "panelattack.com/panel.zip"
+        if GAME_UPDATER.name == "panel-beta" then
+          downloadLink = "panelattack.com/panel-beta.zip"
+        end
+        gprintf(loc("auto_updater_version_warning") .. " " .. downloadLink, -5, infoYPosition, canvas_width, "right")
+        infoYPosition = infoYPosition - fontHeight
       end
 
       wait()
@@ -341,6 +362,7 @@ function createNewReplay(match)
     modeReplay.difficulty = P1.difficulty
     modeReplay.cur_wait_time = P1.cur_wait_time or default_input_repeat_delay
     modeReplay.in_buf = ""
+    modeReplay.inputMethod = P1.inputMethod
   elseif mode == "vs" then
     modeReplay.P = ""
     modeReplay.O = ""
@@ -348,6 +370,7 @@ function createNewReplay(match)
     modeReplay.Q = ""
     modeReplay.in_buf = ""
     modeReplay.P1_level = P1.level
+    modeReplay.P1_inputMethod = P1.inputMethod
     modeReplay.P1_name = GAME.battleRoom.playerNames[1]
     modeReplay.P1_char = P1.character
     modeReplay.P1_char = P1.character
@@ -355,6 +378,7 @@ function createNewReplay(match)
     modeReplay.do_countdown = true
     if P2 then
       modeReplay.P2_level = P2.level
+      modeReplay.P2_inputMethod = P2.inputMethod
       modeReplay.P2_name = GAME.battleRoom.playerNames[2]
       modeReplay.P2_char = P2.character
       modeReplay.P2_cur_wait_time = P2.cur_wait_time
@@ -363,7 +387,6 @@ function createNewReplay(match)
       modeReplay.P2_win_count = GAME.match.battleRoom.playerWinCounts[P2.player_number]
     end
   end
-
   return result
 end
 
@@ -385,9 +408,49 @@ local function handle_pause(self)
   end
 end
 
-local function finalizeAndWriteReplay(extraPath, extraFilename)
+local function addReplayStatisticsToReplay(replay)
+  local r = replay[GAME.match.mode]
+  r.duration = GAME.match:gameEndedClockTime()
+  if GAME.match.mode == "vs" and P2 then
+    r.match_type = match_type
+    local p1GameResult = P1:gameResult()
+    if p1GameResult == 1 then
+      r.winner = P1.which
+    elseif p1GameResult == -1 then
+      r.winner = P2.which
+    elseif p1GameResult == 0 then
+      r.winner = 0
+    end
+  end
+  r.playerStats = {}
+  
+  if P1 then
+    r.playerStats[P1.which] = {}
+    r.playerStats[P1.which].number = P1.which
+    r.playerStats[P1.which] = P1.analytic.data
+    r.playerStats[P1.which].score = P1.score
+    if GAME.match.mode == "vs" and GAME.match.room_ratings then
+      r.playerStats[P1.which].rating = GAME.match.room_ratings[P1.which]
+    end
+  end
 
-  replay[GAME.match.mode].in_buf = P1.confirmedInput
+  if P2 then
+    r.playerStats[P2.which] = {}
+    r.playerStats[P2.which].number = P2.which
+    r.playerStats[P2.which] = P2.analytic.data
+    r.playerStats[P2.which].score = P2.score
+    if GAME.match.mode == "vs" and GAME.match.room_ratings then
+      r.playerStats[P2.which].rating = GAME.match.room_ratings[P2.which]
+    end
+  end
+
+  return replay
+end
+
+local function finalizeAndWriteReplay(extraPath, extraFilename)
+  replay = addReplayStatisticsToReplay(replay)
+  replay[GAME.match.mode].in_buf = table.concat(P1.confirmedInput)
+  replay[GAME.match.mode].stage = current_stage
 
   local now = os.date("*t", to_UTC(os.time()))
   local sep = "/"
@@ -399,9 +462,8 @@ local function finalizeAndWriteReplay(extraPath, extraFilename)
   if extraFilename then
     filename = filename .. "-" .. extraFilename
   end
-  filename = filename .. ".txt"
-  write_replay_file()
-  logger.info("saving replay as " .. path .. sep .. filename)
+  filename = filename .. ".json"
+  logger.debug("saving replay as " .. path .. sep .. filename)
   write_replay_file(path, filename)
 end
 
@@ -409,9 +471,14 @@ local function finalizeAndWriteVsReplay(battleRoom, outcome_claim, incompleteGam
 
   incompleteGame = incompleteGame or false
   
-  local extraPath, extraFilename
+  local extraPath, extraFilename = "", ""
+
+  if GAME.match:warningOccurred() then
+    extraFilename = extraFilename .. "-WARNING-OCCURRED"
+  end
+
   if P2 then
-    replay[GAME.match.mode].I = P2.confirmedInput
+    replay[GAME.match.mode].I = table.concat(P2.confirmedInput)
 
     local rep_a_name, rep_b_name = battleRoom.playerNames[1], battleRoom.playerNames[2]
     --sort player names alphabetically for folder name so we don't have a folder "a-vs-b" and also "b-vs-a"
@@ -420,7 +487,7 @@ local function finalizeAndWriteVsReplay(battleRoom, outcome_claim, incompleteGam
     else
       extraPath = rep_a_name .. "-vs-" .. rep_b_name
     end
-    extraFilename = rep_a_name .. "-L" .. P1.level .. "-vs-" .. rep_b_name .. "-L" .. P2.level
+    extraFilename = extraFilename .. rep_a_name .. "-L" .. P1.level .. "-vs-" .. rep_b_name .. "-L" .. P2.level
     if match_type and match_type ~= "" then
       extraFilename = extraFilename .. "-" .. match_type
     end
@@ -435,7 +502,7 @@ local function finalizeAndWriteVsReplay(battleRoom, outcome_claim, incompleteGam
     end
   else -- vs Self
     extraPath = "Vs Self"
-    extraFilename = "vsSelf-" .. "L" .. P1.level
+    extraFilename = extraFilename .. "vsSelf-" .. "L" .. P1.level
   end
 
   finalizeAndWriteReplay(extraPath, extraFilename)
@@ -450,7 +517,7 @@ local function runMainGameLoop(updateFunction, variableStepFunction, abortGameFu
 
     -- Render only if we are not catching up to a current spectate match
     if not (P1 and P1.play_to_end) and not (P2 and P2.play_to_end) then
-      GAME.match:render()
+      gfx_q:push({Match.render, {GAME.match}})
       wait()
     end
 
@@ -506,7 +573,7 @@ local function main_endless_time_setup(mode, speed, difficulty, level)
   end
   commonGameSetup()
 
-  P1 = Stack{which=1, match=GAME.match, is_local=true, panels_dir=config.panels, speed=speed, difficulty=difficulty, level=level, character=config.character}
+  P1 = Stack{which=1, match=GAME.match, is_local=true, panels_dir=config.panels, speed=speed, difficulty=difficulty, level=level, character=config.character, inputMethod=config.inputMethod}
 
   GAME.match.P1 = P1
   P1:wait_for_random_character()
@@ -549,6 +616,8 @@ local function main_endless_time_setup(mode, speed, difficulty, level)
       end
       finalizeAndWriteReplay(extraPath, extraFilename)
     end
+
+    GAME.input:allowAllInputConfigurations()
 
     return {game_over_transition, {nextFunction, nil, P1:pick_win_sfx()}}
   end
@@ -765,6 +834,7 @@ local function main_select_speed_99(mode)
       write_conf_file()
     end
     stop_the_music()
+    GAME.input:requestSingleInputConfigurationForPlayerCount(1)
     startGameSet = true
   end
 
@@ -856,6 +926,11 @@ local function main_select_speed_99(mode)
   end
   updateMenus()
 
+  local lastScoreLabelQuads = {}
+  local lastScoreQuads = {}
+  local recordLabelQuads = {}
+  local recordQuads = {}
+
   while true do
 
     if difficulty then
@@ -875,10 +950,10 @@ local function main_select_speed_99(mode)
 
       lastScore = tostring(lastScore)
       record = tostring(record)
-      draw_pixel_font("last score", themes[config.theme].images.IMG_pixelFont_blue_atlas, standard_pixel_font_map(), xPosition1, yPosition, 0.5, 1.0)
-      draw_pixel_font(lastScore, themes[config.theme].images.IMG_pixelFont_blue_atlas, standard_pixel_font_map(), xPosition1, yPosition + 24, 0.5, 1.0)
-      draw_pixel_font("record", themes[config.theme].images.IMG_pixelFont_blue_atlas, standard_pixel_font_map(), xPosition2, yPosition, 0.5, 1.0)
-      draw_pixel_font(record, themes[config.theme].images.IMG_pixelFont_blue_atlas, standard_pixel_font_map(), xPosition2, yPosition + 24, 0.5, 1.0)
+      draw_pixel_font("last score", themes[config.theme].images.IMG_pixelFont_blue_atlas, xPosition1, yPosition, 0.5, 1.0, nil, nil, lastScoreLabelQuads)
+      draw_pixel_font(lastScore, themes[config.theme].images.IMG_pixelFont_blue_atlas, xPosition1, yPosition + 24, 0.5, 1.0, nil, nil, lastScoreQuads)
+      draw_pixel_font("record", themes[config.theme].images.IMG_pixelFont_blue_atlas, xPosition2, yPosition, 0.5, 1.0, nil, nil, recordLabelQuads)
+      draw_pixel_font(record, themes[config.theme].images.IMG_pixelFont_blue_atlas, xPosition2, yPosition + 24, 0.5, 1.0, nil, nil, recordQuads)
     end
 
     gameSettingsMenu:draw()
@@ -1014,9 +1089,9 @@ function main_net_vs_lobby()
         else
           GAME.battleRoom.playerNames[1] = config.name
           GAME.battleRoom.playerNames[2] = msg.opponent
+          love.window.requestAttention()
+          play_optional_sfx(themes[config.theme].sounds.notification)
         end
-        love.window.requestAttention()
-        play_optional_sfx(themes[config.theme].sounds.notification)
         lobby_menu:remove_self()
         return select_screen.main, {select_screen, "2p_net_vs", msg}
       end
@@ -1200,7 +1275,7 @@ function main_net_vs_lobby()
       if showing_leaderboard then
         gprint(leaderboard_string, lobby_menu_x[showing_leaderboard] + 400, lobby_menu_y)
       end
-      gprint(join_community_msg, themes[config.theme].main_menu_screen_pos[1] + 30, canvas_height - 50)
+      gprintf(join_community_msg, 0, 668, canvas_width,"center")
       lobby_menu:draw()
     end
     updated = false
@@ -1276,12 +1351,12 @@ function main_net_vs_setup(ip, network_port)
     end
   end
   P1 = nil
-  P2 = {}
+  P2 = nil
   server_queue = ServerQueue()
   gprint(loc("lb_set_connect"), unpack(themes[config.theme].main_menu_screen_pos))
   wait()
   if not network_init(ip, network_port) then
-    return main_dumb_transition, {main_select_mode, loc("ss_disconnect") .. "\n\n" .. loc("ss_return"), 60, 300}
+    return main_dumb_transition, {main_select_mode, loc("ss_could_not_connect") .. "\n\n" .. loc("ss_return"), 60, 300}
   end
   local timeout_counter = 0
   while not connection_is_ready() do
@@ -1307,46 +1382,75 @@ function main_net_vs()
   --Uncomment below to induce lag
   --STONER_MODE = true
   
-  local function update() 
-    local messages = server_queue:pop_all_with("taunt", "leave_room")
-    for _, msg in ipairs(messages) do
-      if msg.taunt then -- receive taunts
-        local taunts = nil
-        -- P1.character and P2.character are supposed to be already filtered with current mods, taunts may differ though!
-        if msg.player_number == select_screen.my_player_number then
-          taunts = characters[P1.character].sounds[msg.type]
-        elseif msg.player_number == select_screen.op_player_number then
-          taunts = characters[P2.character].sounds[msg.type]
+  local function update()
+    local function handleTaunt()
+      local function getCharacter(playerNumber)
+        if P1.player_number == playerNumber then
+          return characters[P1.character]
+        elseif P2.player_number == playerNumber then
+          return characters[P2.character]
         end
-        if taunts then
-          for _, t in ipairs(taunts) do
-            t:stop()
-          end
-          if msg.index <= #taunts then
-            taunts[msg.index]:play()
-          elseif #taunts ~= 0 then
-            taunts[math.random(#taunts)]:play()
-          end
-        end
-      elseif msg.leave_room then -- lost room during game, go back to lobby
-        finalizeAndWriteVsReplay(GAME.match.battleRoom, 0, true)
-
-        -- Show a message that the match connection was lost along with the average frames behind.
-        local message = loc("ss_room_closed_in_game")
-
-        local P1Behind = P1:averageFramesBehind()
-        local P2Behind = P2:averageFramesBehind()
-        local maxBehind = math.max(P1Behind, P2Behind)
-
-        if GAME.battleRoom.spectating then
-          message = message .. "\n" .. loc("ss_average_frames_behind_player", GAME.battleRoom.playerNames[1], P1Behind)
-          message = message .. "\n" .. loc("ss_average_frames_behind_player", GAME.battleRoom.playerNames[2], P2Behind)
-        else 
-          message = message .. "\n" .. loc("ss_average_frames_behind", maxBehind)
-        end
-
-        return {main_dumb_transition, {main_net_vs_lobby, message, 60, -1}}
       end
+
+      local messages = server_queue:pop_all_with("taunt")
+      for _, msg in ipairs(messages) do
+        if msg.taunt then -- receive taunts
+          local character = getCharacter(msg.player_number)
+          if character ~= nil then
+            character:playTaunt(msg.type, msg.index)
+          end
+       end
+      end
+    end
+
+    local function handleLeaveMessage()
+      local messages = server_queue:pop_all_with("leave_room")
+      for _, msg in ipairs(messages) do
+        if msg.leave_room then -- lost room during game, go back to lobby
+          finalizeAndWriteVsReplay(GAME.match.battleRoom, 0, true)
+
+          -- Show a message that the match connection was lost along with the average frames behind.
+          local message = loc("ss_room_closed_in_game")
+
+          local P1Behind = P1:averageFramesBehind()
+          local P2Behind = P2:averageFramesBehind()
+          local maxBehind = math.max(P1Behind, P2Behind)
+
+          if GAME.battleRoom.spectating then
+            message = message .. "\n" .. loc("ss_average_frames_behind_player", GAME.battleRoom.playerNames[1], P1Behind)
+            message = message .. "\n" .. loc("ss_average_frames_behind_player", GAME.battleRoom.playerNames[2], P2Behind)
+          else 
+            message = message .. "\n" .. loc("ss_average_frames_behind", maxBehind)
+          end
+
+          return {main_dumb_transition, {main_net_vs_lobby, message, 60, -1}}
+        end
+      end
+    end
+
+    local function handleGameEndAsSpectator()
+      -- if the game already ended before we caught up, abort trying to catch up to it early in order to get into the next game instead
+      if GAME.battleRoom.spectating and (P1.play_to_end or P2.play_to_end) then
+        local message = server_queue:pop_next_with("create_room", "character_select")
+        if message then
+          -- shove the message back in for select_screen to handle
+          server_queue:push(message)
+          return {main_dumb_transition, {select_screen.main, nil, 0, 0, false, false, {select_screen, "2p_net_vs"}}}
+        end
+      end
+    end
+
+    local transition = nil
+    handleTaunt()
+
+    transition = handleLeaveMessage()
+    if transition then
+      return transition
+    end
+
+    transition = handleGameEndAsSpectator()
+    if transition then
+      return transition
     end
 
     if not do_messages() then
@@ -1422,8 +1526,7 @@ function main_local_vs_setup()
   GAME.battleRoom = BattleRoom()
   GAME.battleRoom.playerNames[1] = loc("player_n", "1")
   GAME.battleRoom.playerNames[2] = loc("player_n", "2")
-  GAME.input:clearInputConfigurationsForPlayers()
-  GAME.input:requestPlayerInputConfigurationAssignments(2)
+  GAME.input:requestSingleInputConfigurationForPlayerCount(2)
   return select_screen.main, {select_screen, "2p_local_vs"}
 end
 
@@ -1515,7 +1618,7 @@ function main_local_vs_yourself()
       0, -- timemax
       nil, -- winnerSFX
       false, -- keepMusic
-      {select_screen, "1p_vs_yourself"} -- args
+      {select_screen, "1p_vs_yourself"} -- args:
     }}
   end
   
@@ -1533,96 +1636,12 @@ function main_local_vs_yourself()
   return runMainGameLoop, {update, variableStep, abortGame, processGameResults}
 end
 
-function loadFromReplay(replay)
-
-  if replay.vs then
-    replay = replay.vs
-
-    GAME.battleRoom = BattleRoom()
-    GAME.match = Match("vs", GAME.battleRoom)
-    GAME.match.seed = replay.seed or 0
-    GAME.match.isFromReplay = true
-    P1 = Stack{which=1, match=GAME.match, is_local=false, level=replay.P1_level or 5, character=replay.P1_char}
-
-    if replay.I and string.len(replay.I) > 0 then
-      P2 = Stack{which=2, match=GAME.match, is_local=false, level=replay.P2_level or 5, character=replay.P2_char}
-      
-      P1:set_garbage_target(P2)
-      P2:set_garbage_target(P1)
-      P2:moveForPlayerNumber(2)
-
-      if replay.P1_win_count then
-        GAME.match.battleRoom.playerWinCounts[1] = replay.P1_win_count
-        GAME.match.battleRoom.playerWinCounts[2] = replay.P2_win_count
-      end
-
-    else
-      P1:set_garbage_target(P1)
-    end
-
-    GAME.battleRoom.playerNames[1] = replay.P1_name or loc("player_n", "1")
-    if P2 then
-      GAME.battleRoom.playerNames[2] = replay.P2_name or loc("player_n", "2")
-    end
-
-    if replay.ranked then
-      match_type = "Ranked"
-    else
-      match_type = "Casual"
-    end
-
-  elseif replay.endless or replay.time then
-    if replay.time then
-      GAME.match = Match("time")
-    else
-      GAME.match = Match("endless")
-    end
-    
-    replay = replay.endless or replay.time
-
-    GAME.match.seed = replay.seed or 0
-    
-    if replay.pan_buf then
-      replay.P = replay.pan_buf -- support old versions
-    end
-
-    P1 = Stack{which=1, match=GAME.match, is_local=false, speed=replay.speed, difficulty=replay.difficulty}
-    GAME.match.P1 = P1
-    P1:wait_for_random_character()
-  end
-
-  P1:receiveConfirmedInput(uncompress_input_string(replay.in_buf))
-  GAME.match.P1 = P1
-  P1.do_countdown = replay.do_countdown or false
-  P1.max_runs_per_frame = 1
-  P1.cur_wait_time = replay.cur_wait_time or default_input_repeat_delay
-
-  refreshBasedOnOwnMods(P1)
-
-  if P2 then
-    P2:receiveConfirmedInput(uncompress_input_string(replay.I))
-
-    GAME.match.P2 = P2
-    P2.do_countdown = replay.do_countdown or false
-    P2.max_runs_per_frame = 1
-    P2.cur_wait_time = replay.P2_cur_wait_time or default_input_repeat_delay
-    refreshBasedOnOwnMods(P2)
-  end
-  character_loader_wait()
-
-  P1:starting_state()
-
-  if P2 then
-    P2:starting_state()
-  end
-end
-
 -- replay player
 function main_replay()
 
   commonGameSetup()
 
-  loadFromReplay(replay)
+  Replay.loadFromFile(replay)
 
   local function update() 
   end
@@ -1648,20 +1667,31 @@ function main_replay()
         P2.max_runs_per_frame = 1
       end
     elseif menu_right() then
-      playbackSpeed = bound(1, playbackSpeed + 1, maximumSpeed)
+      playbackSpeed = bound(-1, playbackSpeed + 1, maximumSpeed)
       if P1 then
-        P1.max_runs_per_frame = playbackSpeed
+        P1.max_runs_per_frame = math.max(playbackSpeed, 0)
       end
       if P2 then
-        P2.max_runs_per_frame = playbackSpeed
+        P2.max_runs_per_frame = math.max(playbackSpeed, 0)
       end
     elseif menu_left() then
-      playbackSpeed = bound(1, playbackSpeed - 1, maximumSpeed)
+      playbackSpeed = bound(-1, playbackSpeed - 1, maximumSpeed)
       if P1 then
-        P1.max_runs_per_frame = playbackSpeed
+        P1.max_runs_per_frame = math.max(playbackSpeed, 0)
       end
       if P2 then
-        P2.max_runs_per_frame = playbackSpeed
+        P2.max_runs_per_frame = math.max(playbackSpeed, 0)
+      end
+    end
+
+    if playbackSpeed == -1 then
+      if P1 and P1.CLOCK > 0 and P1.prev_states[P1.CLOCK-1] then
+        P1:rollbackToFrame(P1.CLOCK-1)
+        P1.lastRollbackFrame = -1 -- We don't want to count this as a "rollback" because we don't want to catchup
+      end
+      if P2 and P2.CLOCK > 0 and P2.prev_states[P2.CLOCK-1] then
+        P2:rollbackToFrame(P2.CLOCK-1)
+        P2.lastRollbackFrame = -1 -- We don't want to count this as a "rollback" because we don't want to catchup
       end
     end
   end
@@ -1722,7 +1752,7 @@ function makeSelectPuzzleSetFunction(puzzleSet, awesome_idx)
     end
 
     GAME.match = Match("puzzle")
-    P1 = Stack{which=1, match=GAME.match, is_local=true, level=config.puzzle_level, character=character}
+    P1 = Stack{which=1, match=GAME.match, is_local=true, level=config.puzzle_level, character=character, inputMethod=config.inputMethod}
     GAME.match.P1 = P1
     P1:wait_for_random_character()
     if not character then
@@ -1943,7 +1973,7 @@ function main_dumb_transition(next_func, text, timemin, timemax, winnerSFX, keep
     stop_the_music()
   end
   winnerSFX = winnerSFX or nil
-  if not SFX_mute then
+  if not GAME.muteSoundEffects then
     -- TODO: somehow winnerSFX can be 0 instead of nil
     if winnerSFX ~= nil and winnerSFX ~= 0 then
       winnerSFX:play()
@@ -1965,7 +1995,6 @@ function main_dumb_transition(next_func, text, timemin, timemax, winnerSFX, keep
   end
 
   local t = 0
-  local font = love.graphics.getFont()
 
   local x = canvas_width / 2
   local y = canvas_height / 2
@@ -2009,7 +2038,7 @@ function game_over_transition(next_func, text, winnerSFX, timemax, keepMusic, ar
   local timemin = 60 -- the minimum amount of frames the game over screen will be displayed for
 
   local t = 0 -- the amount of frames that have passed since the game over screen was displayed
-  local font = love.graphics.getFont()
+  local font = get_global_font()
   local winnerTime = 60
 
   if SFX_GameOver_Play == 1 then
@@ -2027,7 +2056,7 @@ function game_over_transition(next_func, text, winnerSFX, timemax, keepMusic, ar
   end
 
   while true do
-    GAME.match:render()
+    gfx_q:push({Match.render, {GAME.match}})
     gprint(text, (canvas_width - font:getWidth(text)) / 2, 10)
     gprint(button_text, (canvas_width - font:getWidth(button_text)) / 2, 10 + 30)
     wait()
@@ -2052,7 +2081,7 @@ function game_over_transition(next_func, text, winnerSFX, timemax, keepMusic, ar
         end
 
         -- Play the winner sound effect after a delay
-        if not SFX_mute then
+        if not GAME.muteSoundEffects then
           if t >= winnerTime then
             if winnerSFX ~= nil then -- play winnerSFX then nil it so it doesn't loop
               winnerSFX:play()
@@ -2078,7 +2107,7 @@ function game_over_transition(next_func, text, winnerSFX, timemax, keepMusic, ar
         end
 
         -- if conditions are met, leave the game over screen
-        if t >= timemin and ((t >= timemax and timemax >= 0) or (menu_enter() or menu_escape())) or left_select_menu then
+        if t >= timemin and ((t >= timemax and timemax >= 0) or (menu_enter() or menu_escape() or love.mouse.isDown(1))) or left_select_menu then
           setMusicFadePercentage(1) -- reset the music back to normal config volume
           if not keepMusic then
             stop_the_music()
@@ -2105,6 +2134,9 @@ end
 
 -- quit handling
 function love.quit()
+  if PROFILING_ENABLED then
+    GAME.profiler.report("profiler.log")
+  end
   if network_connected() then
     json_send({logout = true})
   end

@@ -1,6 +1,7 @@
 require("input")
 require("util")
 local graphicsUtil = require("graphics_util")
+local TouchDataEncoding = require("engine.TouchDataEncoding")
 
 local floor = math.floor
 local ceil = math.ceil
@@ -41,7 +42,7 @@ function Stack.update_cards(self)
       card.frame = card.frame + 1
       if (card_animation[card.frame] == nil) then
         if config.popfx == true then
-          card.burstParticle:release()
+          GraphicsUtil:releaseQuad(card.burstParticle)
         end
         self.card_q:pop()
       end
@@ -79,8 +80,14 @@ function Stack.draw_cards(self)
       -- draw card
       local iconSize = 48 / GFX_SCALE
       local cardImage = themes[config.theme].images.IMG_cards[card.chain][card.n]
+      if cardImage == nil then
+       cardImage = themes[config.theme].images.IMG_cards[card.chain][0]
+      end
       local icon_width, icon_height = cardImage:getDimensions()
+      local fade = 1 - math.min(0.5 * ((card.frame-1) / 22), 0.5)
+      set_color(1, 1, 1, fade)
       draw(cardImage, draw_x, draw_y, 0, iconSize / icon_width, iconSize / icon_height)
+      set_color(1, 1, 1, 1)
     end
   end
 end
@@ -103,13 +110,13 @@ function Stack.update_popfxs(self)
       popfx.frame = popfx.frame + 1
       if (popfx_burst_animation[popfx.frame] == nil) then
         if characters[self.character].images["burst"] then
-          popfx.burstParticle:release()
+          GraphicsUtil:releaseQuad(popfx.burstParticle)
         end
         if characters[self.character].images["fade"] then
-          popfx.fadeParticle:release()
+          GraphicsUtil:releaseQuad(popfx.fadeParticle)
         end
         if characters[self.character].images["burst"] then
-          popfx.bigParticle:release()
+          GraphicsUtil:releaseQuad(popfx.bigParticle)
         end
         self.pop_q:pop()
       end
@@ -260,27 +267,10 @@ function Stack.render(self)
     love.graphics.setShader()
   end
 
-  gfx_q:push({love.graphics.setCanvas, {{self.canvas, stencil = true}}})
-  gfx_q:push({love.graphics.clear, {}})
-  gfx_q:push({love.graphics.stencil, {frame_mask, "replace", 1}})
-  gfx_q:push({love.graphics.setStencilTest, {"greater", 0}})
-
-  time_quads = {}
-  move_quads = {}
-  score_quads = {}
-  speed_quads = {}
-  level_quad = love.graphics.newQuad(0, 0, themes[config.theme].images["IMG_levelNumber_atlas" .. self.id]:getWidth() / 11, themes[config.theme].images["IMG_levelNumber_atlas" .. self.id]:getHeight(), themes[config.theme].images["IMG_levelNumber_atlas" .. self.id]:getDimensions())
-  win_quads = {}
-  healthQuad = love.graphics.newQuad(0, 0, themes[config.theme].images.IMG_healthbar:getWidth(), themes[config.theme].images.IMG_healthbar:getHeight(), themes[config.theme].images.IMG_healthbar:getWidth(), themes[config.theme].images.IMG_healthbar:getHeight())
-  prestopQuad = love.graphics.newQuad(0, 0, themes[config.theme].images.IMG_prestop_bar:getWidth(), themes[config.theme].images.IMG_prestop_bar:getHeight(), themes[config.theme].images.IMG_prestop_bar:getWidth(), themes[config.theme].images.IMG_prestop_bar:getHeight())
-  stopQuad = love.graphics.newQuad(0, 0, themes[config.theme].images.IMG_stop_bar:getWidth(), themes[config.theme].images.IMG_stop_bar:getHeight(), themes[config.theme].images.IMG_stop_bar:getWidth(), themes[config.theme].images.IMG_stop_bar:getHeight())
-  shakeQuad = love.graphics.newQuad(0, 0, themes[config.theme].images.IMG_shake_bar:getWidth(), themes[config.theme].images.IMG_shake_bar:getHeight(), themes[config.theme].images.IMG_shake_bar:getWidth(), themes[config.theme].images.IMG_shake_bar:getHeight())
-  prestop_quads = {}
-  stop_quads = {}
-  shake_quads = {}
-  multi_prestopQuad = love.graphics.newQuad(0, 0, themes[config.theme].images.IMG_multibar_prestop_bar:getWidth(), themes[config.theme].images.IMG_multibar_prestop_bar:getHeight(), themes[config.theme].images.IMG_multibar_prestop_bar:getWidth(), themes[config.theme].images.IMG_multibar_prestop_bar:getHeight())
-  multi_stopQuad = love.graphics.newQuad(0, 0, themes[config.theme].images.IMG_multibar_stop_bar:getWidth(), themes[config.theme].images.IMG_multibar_stop_bar:getHeight(), themes[config.theme].images.IMG_multibar_stop_bar:getWidth(), themes[config.theme].images.IMG_multibar_stop_bar:getHeight())
-  multi_shakeQuad = love.graphics.newQuad(0, 0, themes[config.theme].images.IMG_multibar_shake_bar:getWidth(), themes[config.theme].images.IMG_multibar_shake_bar:getHeight(), themes[config.theme].images.IMG_multibar_shake_bar:getWidth(), themes[config.theme].images.IMG_multibar_shake_bar:getHeight())
+  love.graphics.setCanvas({self.canvas, stencil = true})
+  love.graphics.clear()
+  love.graphics.stencil(frame_mask, "replace", 1)
+  love.graphics.setStencilTest("greater", 0)
 
   -- draw inside stack's frame canvas
   local portrait_image = "portrait"
@@ -291,15 +281,18 @@ function Stack.render(self)
   local portrait_w, portrait_h = characters[self.character].images[portrait_image]:getDimensions()
 
   -- Draw the portrait (with fade and inversion if needed)
-  if self.do_countdown == false then
-    self.portraitFade = 0.3
-  else
+  if self.do_countdown then
+    -- self.portraitFade starts at 0 (no fade)
     if self.countdown_CLOCK then
-      if self.countdown_CLOCK > 50 and self.countdown_CLOCK < 80 then
-        self.portraitFade = ((config.portrait_darkness / 100) / 79) * self.countdown_CLOCK
+      local desiredFade = config.portrait_darkness / 100
+      local startFrame = 50
+      local fadeDuration = 30
+      if self.countdown_CLOCK <= 50 then
+        self.portraitFade = 0
+      elseif self.countdown_CLOCK > 50 and self.countdown_CLOCK <= startFrame + fadeDuration then
+        local percent = (self.countdown_CLOCK - startFrame) / fadeDuration
+        self.portraitFade = desiredFade * percent
       end
-    elseif self.CLOCK > 200 then
-      self.portraitFade = config.portrait_darkness / 100
     end
   end
   if self.which == 1 or portrait_image == "portrait2" then
@@ -478,18 +471,18 @@ function Stack.render(self)
   end
   -- ends here
 
-  gfx_q:push({love.graphics.setStencilTest, {}})
-  gfx_q:push({love.graphics.setCanvas, {GAME.globalCanvas}})
-  gfx_q:push({love.graphics.setBlendMode, {"alpha", "premultiplied"}})
-  gfx_q:push({love.graphics.draw, {self.canvas, (self.pos_x - 4) * GFX_SCALE, (self.pos_y - 4) * GFX_SCALE}})
-  gfx_q:push({love.graphics.setBlendMode, {"alpha", "alphamultiply"}})
+  love.graphics.setStencilTest()
+  love.graphics.setCanvas(GAME.globalCanvas)
+  love.graphics.setBlendMode("alpha", "premultiplied")
+  love.graphics.draw(self.canvas, (self.pos_x - 4) * GFX_SCALE, (self.pos_y - 4) * GFX_SCALE)
+  love.graphics.setBlendMode("alpha", "alphamultiply")
 
   self:draw_popfxs()
   self:draw_cards()
 
   -- Draw debug graphics if set
   if config.debug_mode then
-    local mx, my = GAME:transform_coordinates(love.mouse.getPosition())
+    local mouseX, mouseY = GAME:transform_coordinates(love.mouse.getPosition())
 
     for row = 0, self.height do
       for col = 1, self.width do
@@ -498,7 +491,7 @@ function Stack.render(self)
         local draw_y = (self.pos_y + (11 - (row)) * 16 + self.displacement - shake) * GFX_SCALE
 
         -- Require hovering over a stack to show details
-        if mx >= self.pos_x * GFX_SCALE and mx <= (self.pos_x + self.width * 16) * GFX_SCALE then
+        if mouseX >= self.pos_x * GFX_SCALE and mouseX <= (self.pos_x + self.width * 16) * GFX_SCALE then
           if panel.color ~= 0 and panel.state ~= "popped" then
             gprint(panel.state, draw_x, draw_y)
             if panel.match_anyway ~= nil then
@@ -513,7 +506,7 @@ function Stack.render(self)
           end
         end
 
-        if mx >= draw_x and mx < draw_x + 16 * GFX_SCALE and my >= draw_y and my < draw_y + 16 * GFX_SCALE then
+        if mouseX >= draw_x and mouseX < draw_x + 16 * GFX_SCALE and mouseY >= draw_y and mouseY < draw_y + 16 * GFX_SCALE then
           local str = loc("pl_panel_info", row, col)
           for k, v in pairsSortedByKeys(panel) do
             str = str .. "\n" .. k .. ": " .. tostring(v)
@@ -538,10 +531,10 @@ function Stack.render(self)
       draw_label(themes[config.theme].images.IMG_moves, (self.origin_x + themes[config.theme].moveLabel_Pos[1]) / GFX_SCALE, (self.pos_y + themes[config.theme].moveLabel_Pos[2]) / GFX_SCALE, 0, themes[config.theme].moveLabel_Scale)
       if self.puzzle.puzzleType == "moves" then
         -- display moves left
-        draw_number(self.puzzle.remaining_moves, themes[config.theme].images.IMG_number_atlas_1P, 10, move_quads, self.score_x + themes[config.theme].move_Pos[1], self.score_y + themes[config.theme].move_Pos[2], themes[config.theme].move_Scale, (30 / themes[config.theme].images.numberWidth_1P * themes[config.theme].move_Scale), (38 / themes[config.theme].images.numberHeight_1P * themes[config.theme].move_Scale), "center", self.multiplication)
+        GraphicsUtil.draw_number(self.puzzle.remaining_moves, themes[config.theme].images.IMG_number_atlas_1P, self.move_quads, self.score_x + themes[config.theme].move_Pos[1], self.score_y + themes[config.theme].move_Pos[2], themes[config.theme].move_Scale, "center")
       else
         -- display total amount of moves
-        draw_number(math.abs(self.puzzle.remaining_moves), themes[config.theme].images.IMG_number_atlas_1P, 10, move_quads, self.score_x + themes[config.theme].move_Pos[1], self.score_y + themes[config.theme].move_Pos[2], themes[config.theme].move_Scale, (30 / themes[config.theme].images.numberWidth_1P * themes[config.theme].move_Scale), (38 / themes[config.theme].images.numberHeight_1P * themes[config.theme].move_Scale), "center", self.multiplication)  
+        GraphicsUtil.draw_number(math.abs(self.puzzle.remaining_moves), themes[config.theme].images.IMG_number_atlas_1P, self.move_quads, self.score_x + themes[config.theme].move_Pos[1], self.score_y + themes[config.theme].move_Pos[2], themes[config.theme].move_Scale, "center")
       end
     end
   end
@@ -549,13 +542,13 @@ function Stack.render(self)
   local function drawScore()
     --gprint(loc("pl_score", self.score), self.score_x, self.score_y-40)
     draw_label(themes[config.theme].images["IMG_score" .. self.id], self.origin_x + (themes[config.theme].scoreLabel_Pos[1] * self.mirror_x), self.pos_y + themes[config.theme].scoreLabel_Pos[2], 0, themes[config.theme].scoreLabel_Scale, self.multiplication)
-    draw_number(self.score, themes[config.theme].images["IMG_number_atlas" .. self.id], 10, score_quads, (self.origin_x + (themes[config.theme].score_Pos[1] * self.mirror_x)) * GFX_SCALE, (self.pos_y + themes[config.theme].score_Pos[2]) * GFX_SCALE, themes[config.theme].score_Scale, (15 / themes[config.theme].images["numberWidth" .. self.id] * themes[config.theme].score_Scale), (19.5 / themes[config.theme].images["numberHeight" .. self.id] * themes[config.theme].score_Scale), "center", self.multiplication)
+    GraphicsUtil.draw_number(self.score, themes[config.theme].images["IMG_number_atlas" .. self.id], self.score_quads, (self.origin_x + (themes[config.theme].score_Pos[1] * self.mirror_x)) * GFX_SCALE, (self.pos_y + themes[config.theme].score_Pos[2]) * GFX_SCALE, themes[config.theme].score_Scale, "center")
   end
 
   local function drawSpeed()
     --gprint(loc("pl_speed", self.speed), self.score_x, self.score_y+45)
     draw_label(themes[config.theme].images["IMG_speed" .. self.id], self.origin_x + themes[config.theme].speedLabel_Pos[1] * self.mirror_x, (self.pos_y + themes[config.theme].speedLabel_Pos[2]), 0, themes[config.theme].speedLabel_Scale, self.multiplication)
-    draw_number(self.speed, themes[config.theme].images["IMG_number_atlas" .. self.id], 10, speed_quads, (self.origin_x + (themes[config.theme].speed_Pos[1] * self.mirror_x)) * GFX_SCALE, (self.pos_y + themes[config.theme].speed_Pos[2]) * GFX_SCALE, themes[config.theme].speed_Scale, (15 / themes[config.theme].images["numberWidth" .. self.id] * themes[config.theme].speed_Scale), (19 / themes[config.theme].images["numberHeight" .. self.id] * themes[config.theme].speed_Scale), "center", self.multiplication)
+    GraphicsUtil.draw_number(self.speed, themes[config.theme].images["IMG_number_atlas" .. self.id], self.speed_quads, (self.origin_x + (themes[config.theme].speed_Pos[1] * self.mirror_x)) * GFX_SCALE, (self.pos_y + themes[config.theme].speed_Pos[2]) * GFX_SCALE, themes[config.theme].speed_Scale, "center")
   end
 
   local function drawTimer()
@@ -573,7 +566,7 @@ function Stack.render(self)
       end
       --gprint(loc("pl_time", string.format("%01d:%02d",mins,secs)), self.score_x, self.score_y+60)
       draw_label(themes[config.theme].images.IMG_time, (main_infos_screen_pos.x + themes[config.theme].timeLabel_Pos[1]) / GFX_SCALE, (main_infos_screen_pos.y + themes[config.theme].timeLabel_Pos[2]) / GFX_SCALE, 0, themes[config.theme].timeLabel_Scale)
-      draw_time(string.format("%01d:%02d", mins, secs), time_quads, main_infos_screen_pos.x + themes[config.theme].time_Pos[1], main_infos_screen_pos.y + themes[config.theme].time_Pos[2], 20 / themes[config.theme].images.timeNumberWidth * themes[config.theme].time_Scale, 26 / themes[config.theme].images.timeNumberHeight * themes[config.theme].time_Scale)
+      GraphicsUtil.draw_time(string.format("%01d:%02d", mins, secs), self.time_quads, main_infos_screen_pos.x + themes[config.theme].time_Pos[1], main_infos_screen_pos.y + themes[config.theme].time_Pos[2], themes[config.theme].time_Scale)
     elseif self.match.mode == "puzzle" then
       -- puzzles don't have a timer...yet?
     else
@@ -581,7 +574,7 @@ function Stack.render(self)
       if self and self.which == 1 and self.game_stopwatch and tonumber(self.game_stopwatch) then
         --gprint(frames_to_time_string(self.game_stopwatch, self.match.mode == "endless"), main_infos_screen_pos.x+10, main_infos_screen_pos.y+6)
         draw_label(themes[config.theme].images.IMG_time, (main_infos_screen_pos.x + themes[config.theme].timeLabel_Pos[1]) / GFX_SCALE, (main_infos_screen_pos.y + themes[config.theme].timeLabel_Pos[2]) / GFX_SCALE, 0, themes[config.theme].timeLabel_Scale)
-        draw_time(frames_to_time_string(self.game_stopwatch, self.match.mode == "endless"), time_quads, main_infos_screen_pos.x + themes[config.theme].time_Pos[1], main_infos_screen_pos.y + themes[config.theme].time_Pos[2], 20 / themes[config.theme].images.timeNumberWidth * themes[config.theme].time_Scale, 26 / themes[config.theme].images.timeNumberHeight * themes[config.theme].time_Scale)
+        GraphicsUtil.draw_time(frames_to_time_string(self.game_stopwatch, self.match.mode == "endless"), self.time_quads, main_infos_screen_pos.x + themes[config.theme].time_Pos[1], main_infos_screen_pos.y + themes[config.theme].time_Pos[2], themes[config.theme].time_Scale)
       end
     end
   end
@@ -592,8 +585,8 @@ function Stack.render(self)
       draw_label(themes[config.theme].images["IMG_level" .. self.id], self.origin_x + themes[config.theme].levelLabel_Pos[1] * self.mirror_x, self.pos_y + themes[config.theme].levelLabel_Pos[2], 0, themes[config.theme].levelLabel_Scale, self.multiplication)
   
       level_atlas = themes[config.theme].images["IMG_levelNumber_atlas" .. self.id]
-      level_quad:setViewport(tonumber(self.level - 1) * (level_atlas:getWidth() / 11), 0, level_atlas:getWidth() / 11, level_atlas:getHeight(), level_atlas:getDimensions())
-      qdraw(level_atlas, level_quad, (self.origin_x + themes[config.theme].level_Pos[1] * self.mirror_x), (self.pos_y + themes[config.theme].level_Pos[2]), 0, (28 / themes[config.theme].images["levelNumberWidth" .. self.id] * themes[config.theme].level_Scale) / GFX_SCALE, (26 / themes[config.theme].images["levelNumberHeight" .. self.id] * themes[config.theme].level_Scale / GFX_SCALE), 0, 0, self.multiplication)
+      self.level_quad:setViewport(tonumber(self.level - 1) * (level_atlas:getWidth() / 11), 0, level_atlas:getWidth() / 11, level_atlas:getHeight(), level_atlas:getDimensions())
+      qdraw(level_atlas, self.level_quad, (self.origin_x + themes[config.theme].level_Pos[1] * self.mirror_x), (self.pos_y + themes[config.theme].level_Pos[2]), 0, (28 / themes[config.theme].images["levelNumberWidth" .. self.id] * themes[config.theme].level_Scale) / GFX_SCALE, (26 / themes[config.theme].images["levelNumberHeight" .. self.id] * themes[config.theme].level_Scale / GFX_SCALE), 0, 0, self.multiplication)
     end
   end
 
@@ -601,7 +594,7 @@ function Stack.render(self)
     -- Draw the stop time and healthbars
     --gprint(loc("pl_health", self.health), self.score_x, self.score_y-40)
     --(self.pos_x-4)*GFX_SCALE, (self.pos_y-4)*GFX_SCALE
-    --if healthQuad == nil then local healthQuad = love.graphics.newQuad(0, 0, themes[config.theme].images.IMG_healthbar:getWidth(), themes[config.theme].images.IMG_healthbar:getHeight(),
+    --if self.healthQuad == nil then local self.healthQuad = GraphicsUtil:newRecycledQuad(0, 0, themes[config.theme].images.IMG_healthbar:getWidth(), themes[config.theme].images.IMG_healthbar:getHeight(),
     --  themes[config.theme].images.IMG_healthbar:getWidth(), themes[config.theme].images.IMG_healthbar:getHeight()) end
     local stop_time = self.stop_time
     local shake_time = self.shake_time
@@ -621,17 +614,14 @@ function Stack.render(self)
     if not themes[config.theme].multibar_is_absolute then
       -- Healthbar
       local healthbar = self.health * (themes[config.theme].images.IMG_healthbar:getHeight() / self.max_health)
-      healthQuad:setViewport(0, themes[config.theme].images.IMG_healthbar:getHeight() - healthbar, themes[config.theme].images.IMG_healthbar:getWidth(), healthbar)
-      qdraw(themes[config.theme].images.IMG_healthbar, healthQuad, self.origin_x + themes[config.theme].healthbar_Pos[1] * self.mirror_x, (self.pos_y + themes[config.theme].healthbar_Pos[2]) + (themes[config.theme].images.IMG_healthbar:getHeight() - healthbar), themes[config.theme].healthbar_Rotate, themes[config.theme].healthbar_Scale, themes[config.theme].healthbar_Scale, 0, 0, self.multiplication)
+      self.healthQuad:setViewport(0, themes[config.theme].images.IMG_healthbar:getHeight() - healthbar, themes[config.theme].images.IMG_healthbar:getWidth(), healthbar)
+      qdraw(themes[config.theme].images.IMG_healthbar, self.healthQuad, self.origin_x + themes[config.theme].healthbar_Pos[1] * self.mirror_x, (self.pos_y + themes[config.theme].healthbar_Pos[2]) + (themes[config.theme].images.IMG_healthbar:getHeight() - healthbar), themes[config.theme].healthbar_Rotate, themes[config.theme].healthbar_Scale, themes[config.theme].healthbar_Scale, 0, 0, self.multiplication)
     end
 
     --gprint(loc("pl_stop", stop_time), self.score_x, self.score_y+300)
     --gprint(loc("pl_shake", shake_time), self.score_x, self.score_y+320)
     --gprint(loc("pl_pre_stop", self.pre_stop_time), self.score_x, self.score_y+340)
-    -- Prestop frame
-    if themes[config.theme].images.IMG_prestop_frame then
-      draw_label(themes[config.theme].images.IMG_prestop_frame, self.origin_x + themes[config.theme].prestop_frame_Pos[1] * self.mirror_x, self.pos_y + themes[config.theme].prestop_frame_Pos[2], 0, themes[config.theme].prestop_frame_Scale, self.multiplication)
-    end
+
     -- Prestop bar
     if self.pre_stop_time == 0 or self.maxPrestop == nil then
       self.maxPrestop = 0
@@ -640,18 +630,6 @@ function Stack.render(self)
       self.maxPrestop = self.pre_stop_time
     end
 
-    if self.maxPrestop > 0 then
-      prestop_bar = self.pre_stop_time * (themes[config.theme].images.IMG_prestop_bar:getHeight() / self.maxPrestop)
-    else
-      prestop_bar = 0
-    end
-    prestopQuad:setViewport(0, themes[config.theme].images.IMG_prestop_bar:getHeight() - prestop_bar, themes[config.theme].images.IMG_prestop_bar:getWidth(), prestop_bar)
-    qdraw(themes[config.theme].images.IMG_prestop_bar, prestopQuad, self.origin_x + (themes[config.theme].prestop_bar_Pos[1] * self.mirror_x), ((self.pos_y + themes[config.theme].prestop_bar_Pos[2]) + ((themes[config.theme].images.IMG_prestop_bar:getHeight() - prestop_bar) / GFX_SCALE)), themes[config.theme].prestop_bar_Rotate, themes[config.theme].prestop_bar_Scale / GFX_SCALE, themes[config.theme].prestop_bar_Scale / GFX_SCALE, 0, 0, self.multiplication)
-    -- Prestop number
-    draw_number(self.pre_stop_time, themes[config.theme].images.IMG_timeNumber_atlas, 12, prestop_quads, (self.origin_x + (themes[config.theme].prestop_Pos[1] * self.mirror_x)) * GFX_SCALE, (self.pos_y + themes[config.theme].prestop_Pos[2]) * GFX_SCALE, themes[config.theme].prestop_Scale, (15 / themes[config.theme].images.timeNumberWidth * themes[config.theme].prestop_Scale), (19 / themes[config.theme].images.timeNumberHeight * themes[config.theme].prestop_Scale), "center", self.multiplication)
-
-    -- Stop frame
-    draw_label(themes[config.theme].images.IMG_stop_frame, self.origin_x + themes[config.theme].stop_frame_Pos[1] * self.mirror_x, self.pos_y + themes[config.theme].stop_frame_Pos[2], 0, themes[config.theme].stop_frame_Scale, self.multiplication)
     -- Stop bar
     if stop_time == 0 or self.maxStop == nil then
       self.maxStop = 0
@@ -659,18 +637,7 @@ function Stack.render(self)
     if stop_time > self.maxStop then
       self.maxStop = stop_time
     end
-    if self.maxStop > 0 then
-      stop_bar = stop_time * (themes[config.theme].images.IMG_stop_bar:getHeight() / self.maxStop)
-    else
-      stop_bar = 0
-    end
-    stopQuad:setViewport(0, themes[config.theme].images.IMG_stop_bar:getHeight() - stop_bar, themes[config.theme].images.IMG_stop_bar:getWidth(), stop_bar)
-    qdraw(themes[config.theme].images.IMG_stop_bar, stopQuad, self.origin_x + themes[config.theme].stop_bar_Pos[1] * self.mirror_x, ((self.pos_y + themes[config.theme].stop_bar_Pos[2]) + ((themes[config.theme].images.IMG_stop_bar:getHeight() - stop_bar) / GFX_SCALE)), themes[config.theme].stop_bar_Rotate, themes[config.theme].stop_bar_Scale / GFX_SCALE, themes[config.theme].stop_bar_Scale / GFX_SCALE, 0, 0, self.multiplication)
-    -- Stop number
-    draw_number(stop_time, themes[config.theme].images.IMG_timeNumber_atlas, 12, stop_quads, (self.origin_x + (themes[config.theme].stop_Pos[1] * self.mirror_x)) * GFX_SCALE, (self.pos_y + themes[config.theme].stop_Pos[2]) * GFX_SCALE, themes[config.theme].stop_Scale, (15 / themes[config.theme].images.timeNumberWidth * themes[config.theme].stop_Scale), (19 / themes[config.theme].images.timeNumberHeight * themes[config.theme].stop_Scale), "center", self.multiplication)
 
-    -- Shake frame
-    draw_label(themes[config.theme].images.IMG_shake_frame, self.origin_x + themes[config.theme].shake_frame_Pos[1] * self.mirror_x, self.pos_y + themes[config.theme].shake_frame_Pos[2], 0, themes[config.theme].shake_frame_Scale, self.multiplication)
     -- Shake bar
     if shake_time == 0 or self.maxShake == nil then
       self.maxShake = 0
@@ -678,18 +645,6 @@ function Stack.render(self)
     if shake_time > self.maxShake then
       self.maxShake = shake_time
     end
-    if self.maxShake > 0 then
-      shake_bar = shake_time * (themes[config.theme].images.IMG_shake_bar:getHeight() / self.maxShake)
-    else
-      shake_bar = 0
-    end
-
-    if not themes[config.theme].multibar_is_absolute then
-      shakeQuad:setViewport(0, themes[config.theme].images.IMG_shake_bar:getHeight() - shake_bar, themes[config.theme].images.IMG_shake_bar:getWidth(), shake_bar)
-      qdraw(themes[config.theme].images.IMG_shake_bar, shakeQuad, self.origin_x + themes[config.theme].shake_bar_Pos[1] * self.mirror_x, ((self.pos_y + themes[config.theme].shake_bar_Pos[2]) + ((themes[config.theme].images.IMG_shake_bar:getHeight() - shake_bar) / GFX_SCALE)), themes[config.theme].shake_bar_Rotate, themes[config.theme].shake_bar_Scale / GFX_SCALE, themes[config.theme].shake_bar_Scale / GFX_SCALE, 0, 0, self.multiplication)
-    end
-    -- Shake number
-    draw_number(shake_time, themes[config.theme].images.IMG_timeNumber_atlas, 12, shake_quads, (self.origin_x + (themes[config.theme].shake_Pos[1] * self.mirror_x)) * GFX_SCALE, (self.pos_y + themes[config.theme].shake_Pos[2]) * GFX_SCALE, themes[config.theme].shake_Scale, (15 / themes[config.theme].images.timeNumberWidth * themes[config.theme].shake_Scale), (19 / themes[config.theme].images.timeNumberHeight * themes[config.theme].shake_Scale), "center", self.multiplication)
 
     -- Scaled Multibar
     if not themes[config.theme].multibar_is_absolute then
@@ -703,17 +658,16 @@ function Stack.render(self)
       if self.maxPrestop > 0 and shake_time < self.pre_stop_time + stop_time then
         multi_prestop_bar = self.pre_stop_time * (themes[config.theme].images.IMG_multibar_prestop_bar:getHeight() / self.maxPrestop) * 1.5
       end
-      multi_shakeQuad:setViewport(0, themes[config.theme].images.IMG_multibar_shake_bar:getHeight() - multi_shake_bar, themes[config.theme].images.IMG_multibar_shake_bar:getWidth(), multi_shake_bar)
-      multi_stopQuad:setViewport(0, themes[config.theme].images.IMG_multibar_stop_bar:getHeight() - multi_stop_bar, themes[config.theme].images.IMG_multibar_stop_bar:getWidth(), multi_stop_bar)
-      multi_prestopQuad:setViewport(0, themes[config.theme].images.IMG_multibar_prestop_bar:getHeight() - multi_prestop_bar, themes[config.theme].images.IMG_multibar_prestop_bar:getWidth(), multi_prestop_bar)
+      self.multi_shakeQuad:setViewport(0, themes[config.theme].images.IMG_multibar_shake_bar:getHeight() - multi_shake_bar, themes[config.theme].images.IMG_multibar_shake_bar:getWidth(), multi_shake_bar)
+      self.multi_stopQuad:setViewport(0, themes[config.theme].images.IMG_multibar_stop_bar:getHeight() - multi_stop_bar, themes[config.theme].images.IMG_multibar_stop_bar:getWidth(), multi_stop_bar)
+      self.multi_prestopQuad:setViewport(0, themes[config.theme].images.IMG_multibar_prestop_bar:getHeight() - multi_prestop_bar, themes[config.theme].images.IMG_multibar_prestop_bar:getWidth(), multi_prestop_bar)
 
-      draw_label(themes[config.theme].images.IMG_multibar_frame, self.origin_x + themes[config.theme].multibar_frame_Pos[1] * self.mirror_x, self.pos_y + themes[config.theme].multibar_frame_Pos[2], 0, themes[config.theme].multibar_frame_Scale, self.multiplication)
       --Shake
-      qdraw(themes[config.theme].images.IMG_multibar_shake_bar, multi_shakeQuad, self.origin_x + themes[config.theme].multibar_Pos[1] * self.mirror_x, ((self.pos_y + themes[config.theme].multibar_Pos[2]) + ((themes[config.theme].images.IMG_multibar_shake_bar:getHeight() - multi_shake_bar) / GFX_SCALE)), 0, themes[config.theme].multibar_Scale / GFX_SCALE, themes[config.theme].multibar_Scale / GFX_SCALE, 0, 0, self.multiplication)
+      qdraw(themes[config.theme].images.IMG_multibar_shake_bar, self.multi_shakeQuad, self.origin_x + themes[config.theme].multibar_Pos[1] * self.mirror_x, ((self.pos_y + themes[config.theme].multibar_Pos[2]) + ((themes[config.theme].images.IMG_multibar_shake_bar:getHeight() - multi_shake_bar) / GFX_SCALE)), 0, themes[config.theme].multibar_Scale / GFX_SCALE, themes[config.theme].multibar_Scale / GFX_SCALE, 0, 0, self.multiplication)
       --Stop
-      qdraw(themes[config.theme].images.IMG_multibar_stop_bar, multi_stopQuad, self.origin_x + themes[config.theme].multibar_Pos[1] * self.mirror_x, (((self.pos_y - (multi_shake_bar / GFX_SCALE)) + themes[config.theme].multibar_Pos[2]) + ((themes[config.theme].images.IMG_multibar_stop_bar:getHeight() - multi_stop_bar) / GFX_SCALE)), 0, themes[config.theme].multibar_Scale / GFX_SCALE, themes[config.theme].multibar_Scale / GFX_SCALE, 0, 0, self.multiplication)
+      qdraw(themes[config.theme].images.IMG_multibar_stop_bar, self.multi_stopQuad, self.origin_x + themes[config.theme].multibar_Pos[1] * self.mirror_x, (((self.pos_y - (multi_shake_bar / GFX_SCALE)) + themes[config.theme].multibar_Pos[2]) + ((themes[config.theme].images.IMG_multibar_stop_bar:getHeight() - multi_stop_bar) / GFX_SCALE)), 0, themes[config.theme].multibar_Scale / GFX_SCALE, themes[config.theme].multibar_Scale / GFX_SCALE, 0, 0, self.multiplication)
       -- Prestop
-      qdraw(themes[config.theme].images.IMG_multibar_prestop_bar, multi_prestopQuad, self.origin_x + (themes[config.theme].multibar_Pos[1] * self.mirror_x), (((self.pos_y - (multi_shake_bar / GFX_SCALE + multi_stop_bar / GFX_SCALE)) + themes[config.theme].multibar_Pos[2]) + ((themes[config.theme].images.IMG_multibar_prestop_bar:getHeight() - multi_prestop_bar) / GFX_SCALE)), 0, themes[config.theme].multibar_Scale / GFX_SCALE, themes[config.theme].multibar_Scale / GFX_SCALE, 0, 0, self.multiplication)
+      qdraw(themes[config.theme].images.IMG_multibar_prestop_bar, self.multi_prestopQuad, self.origin_x + (themes[config.theme].multibar_Pos[1] * self.mirror_x), (((self.pos_y - (multi_shake_bar / GFX_SCALE + multi_stop_bar / GFX_SCALE)) + themes[config.theme].multibar_Pos[2]) + ((themes[config.theme].images.IMG_multibar_prestop_bar:getHeight() - multi_prestop_bar) / GFX_SCALE)), 0, themes[config.theme].multibar_Scale / GFX_SCALE, themes[config.theme].multibar_Scale / GFX_SCALE, 0, 0, self.multiplication)
     else -- Absolute Multibar
       -- Healthbar
       local iconX = (self.origin_x + themes[config.theme].multibar_Pos[1] * self.mirror_x) * GFX_SCALE
@@ -724,7 +678,7 @@ function Stack.render(self)
       local healthBar = self.health * multiBarFrameScale
       local shakeTimeBar, stopTimeBar, preStopBar = 0, 0, 0
       if self.maxShake > 0 and shake_time >= self.pre_stop_time + stop_time then
-        stopTimeBar = math.min(shake_time * multiBarFrameScale, multiBarMaxHeight - healthBar)
+        shakeTimeBar = math.min(shake_time * multiBarFrameScale, multiBarMaxHeight - healthBar)
       end
       if self.maxStop > 0 and shake_time < self.pre_stop_time + stop_time then
         stopTimeBar = math.min(stop_time * multiBarFrameScale, multiBarMaxHeight - shakeTimeBar - healthBar)
@@ -775,7 +729,12 @@ function Stack.render(self)
       gprint(loc("pl_metal", (self.metal_panels_queued or 0)), self.score_x, self.score_y + 180)
     end
     if config.debug_mode and (self.input_state or self.taunt_up or self.taunt_down) then
-      local iraise, iswap, iup, idown, ileft, iright = unpack(base64decode[self.input_state])
+      local iraise, iswap, iup, idown, ileft, iright
+      if self.inputMethod == "touch" then
+        iraise, _, _ = TouchDataEncoding.latinStringToTouchData(self.input_state, self.width)
+      else 
+        iraise, iswap, iup, idown, ileft, iright = unpack(base64decode[self.input_state])
+      end
       local inputs_to_print = "inputs:"
       if iraise then
         inputs_to_print = inputs_to_print .. "\nraise"
@@ -801,6 +760,9 @@ function Stack.render(self)
       if self.taunt_up then
         inputs_to_print = inputs_to_print .. "\ntaunt_up"
       end
+      if self.inputMethod == "touch" then
+        inputs_to_print = inputs_to_print .. self.touchInputController:debugString()
+      end
       gprint(inputs_to_print, self.score_x, self.score_y + 195)
     end
   end
@@ -824,7 +786,7 @@ function Stack.render(self)
   local function drawCommunityMessage()
     -- Draw the community message
     if not config.debug_mode then
-      gprint(join_community_msg or "", main_infos_screen_pos.x - 45, main_infos_screen_pos.y + 550)
+      gprintf(join_community_msg or "", 0, main_infos_screen_pos.y + 550, canvas_width, "center")
     end
   end
 
@@ -915,16 +877,16 @@ function Stack.render(self)
   
     -- Clean up the chain data so we only show chains up to the highest chain the user has done
     local chainData = {}
-    local chain_above_13 = analytic:compute_above_13()
+    local chain_above_limit = analytic:compute_above_chain_card_limit()
   
-    for i = 2, 13, 1 do
+    for i = 2, themes[config.theme].chainCardLimit, 1 do
       if not analytic.data.reached_chains[i] then
         chainData[i] = 0
       else
         chainData[i] = analytic.data.reached_chains[i]
       end
     end
-    table.insert(chainData, chain_above_13)
+    table.insert(chainData, chain_above_limit)
     for i = #chainData, 0, -1 do
       if chainData[i] and chainData[i] == 0 then
         chainData[i] = nil
@@ -934,11 +896,15 @@ function Stack.render(self)
     end
   
     -- Draw the chain images
-    for i = 2, 14 do
+    for i = 2, themes[config.theme].chainCardLimit + 1 do
       local chain_amount = chainData[i]
       if chain_amount and chain_amount > 0 then
-        icon_width, icon_height = themes[config.theme].images.IMG_cards[true][i]:getDimensions()
-        draw(themes[config.theme].images.IMG_cards[true][i], x / GFX_SCALE, y / GFX_SCALE, 0, iconSize / icon_width, iconSize / icon_height)
+        local cardImage = themes[config.theme].images.IMG_cards[true][i]
+        if cardImage == nil then
+          cardImage = themes[config.theme].images.IMG_cards[true][0]
+        end
+        icon_width, icon_height = cardImage:getDimensions()
+        draw(cardImage, x / GFX_SCALE, y / GFX_SCALE, 0, iconSize / icon_width, iconSize / icon_height)
         gprintf(chain_amount, x + iconToTextSpacing, y + 0, canvas_width, "left", nil, 1, fontIncrement)
         y = y + nextIconIncrement
       end
@@ -952,7 +918,8 @@ function Stack.render(self)
         comboData[i] = 0
       end
     end
-    for i = #comboData, 0, -1 do
+    local maxCombo = maxComboReached(analytic.data)
+    for i = maxCombo, 0, -1 do
       if comboData[i] and comboData[i] == 0 then
         comboData[i] = nil
       else
@@ -1001,18 +968,33 @@ end
 
 -- Draw the stacks cursor
 function Stack.render_cursor(self)
+  if self.inputMethod == "touch" then
+    if self.cur_row == 0 and self.cur_col == 0 then
+      --no panel is touched, let's not draw the cursor
+      return
+    end
+  end
+
   local cursorImage = themes[config.theme].images.IMG_cursor[(floor(self.CLOCK / 16) % 2) + 1]
   local shake_idx = #shake_arr - self.shake_time
   local shake = ceil((shake_arr[shake_idx] or 0) * 13)
-  local scale_x = 40 / cursorImage:getWidth()
+  local desiredCursorWidth = 40
+  local panelWidth = 16
+  local scale_x = desiredCursorWidth / cursorImage:getWidth()
   local scale_y = 24 / cursorImage:getHeight()
 
+  local renderCursor = true
   if self.countdown_timer then
-    if self.CLOCK % 2 == 0 then
-      draw(themes[config.theme].images.IMG_cursor[1], (self.cur_col - 1) * 16, (11 - (self.cur_row)) * 16 + self.displacement - shake, 0, scale_x, scale_y)
+    if self.CLOCK % 2 ~= 0 then
+      renderCursor = false
     end
-  else
-    draw(cursorImage, (self.cur_col - 1) * 16, (11 - (self.cur_row)) * 16 + self.displacement - shake, 0, scale_x, scale_y)
+  end
+  if renderCursor then
+    local xPosition = (self.cur_col - 1) * panelWidth
+    qdraw(cursorImage, self.cursorQuads[1], xPosition, (11 - (self.cur_row)) * panelWidth + self.displacement - shake, 0, scale_x, scale_y)
+    if self.inputMethod == "touch" then
+      qdraw(cursorImage, self.cursorQuads[2], xPosition + 12, (11 - (self.cur_row)) * panelWidth + self.displacement - shake, 0, scale_x, scale_y)
+    end
   end
 end
 
@@ -1022,17 +1004,14 @@ function Stack.render_countdown(self)
     local ready_x = 16
     local initial_ready_y = 4
     local ready_y_drop_speed = 6
+    local ready_y = initial_ready_y + (math.min(8, self.countdown_CLOCK) - 1) * ready_y_drop_speed
     local countdown_x = 44
     local countdown_y = 68
     if self.countdown_CLOCK <= 8 then
-      local ready_y = initial_ready_y + (self.CLOCK - 1) * ready_y_drop_speed
       draw(themes[config.theme].images.IMG_ready, ready_x, ready_y)
-      if self.countdown_CLOCK == 8 then
-        self.ready_y = ready_y
-      end
     elseif self.countdown_CLOCK >= 9 and self.countdown_timer and self.countdown_timer > 0 then
       if self.countdown_timer >= 100 then
-        draw(themes[config.theme].images.IMG_ready, ready_x, self.ready_y or initial_ready_y + 8 * 6)
+        draw(themes[config.theme].images.IMG_ready, ready_x, ready_y)
       end
       local IMG_number_to_draw = themes[config.theme].images.IMG_numbers[math.ceil(self.countdown_timer / 60)]
       if IMG_number_to_draw then
