@@ -289,10 +289,8 @@ do
       end
 
       wait()
-      if config.doAprilFools then
-        if not config.slammed_out and love.system.getOS() ~= "Android" then
-          gprint("Put your mouse here > < if you think the devs are cool",69,69)
-        end
+      if config.doAprilFools and love.system.getOS() ~= "Android" then
+        gprint("Put your mouse here > < if you think the devs are cool",69,69)
       end
 
       variable_step(
