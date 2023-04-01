@@ -413,7 +413,12 @@ function Theme.sound_init(self)
   -- music
   self.musics = {}
   for _, music in ipairs(musics) do
-    self.musics[music] = load_sound_from_supported_extensions(Theme.themeDirectoryPath .. self.name .. "/music/" .. music, true)
+    if config.doAprilFools and (music == "main" or music == "main_start") then
+      self.musics[music] = load_sound_from_supported_extensions("stages/shosoul_lazy_moonbase_afternoons/normal_music", true)
+    else
+      self.musics[music] = load_sound_from_supported_extensions(Theme.themeDirectoryPath .. self.name .. "/music/" .. music, true)
+    end
+    
     if self.musics[music] then
       if not string.find(music, "start") then
         self.musics[music]:setLooping(true)

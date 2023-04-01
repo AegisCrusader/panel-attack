@@ -100,6 +100,13 @@ end
 local function add_stages_from_dir_rec(path)
   local lfs = love.filesystem
   local raw_dir_list = FileUtil.getFilteredDirectoryItems(path)
+  if not config.doAprilFools then
+    for _, thing in ipairs(raw_dir_list) do
+      if thing:match("shosoul") then
+        raw_dir_list[_] = nil
+      end
+    end
+  end
   for i, v in ipairs(raw_dir_list) do
     local current_path = path .. "/" .. v
     if lfs.getInfo(current_path) and lfs.getInfo(current_path).type == "directory" then
@@ -115,7 +122,11 @@ local function add_stages_from_dir_rec(path)
           logger.trace(current_path .. " has been ignored since a stage with this id has already been found")
         else
           stages[stage.id] = stage
-          stages_ids[#stages_ids + 1] = stage.id
+          if stage.id:match("shosoul") then
+            table.insert(stages_ids, 1, stage.id)
+          else
+            stages_ids[#stages_ids+1] = stage.id
+          end
         end
       end
     end

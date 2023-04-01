@@ -269,7 +269,7 @@ end
       pstr = str:gsub("^%l", string.upper)
     end
     if str ~= "__Empty" and str ~= "__Reserved" then
-      local loc_str = {Level = loc("level"), Mode = loc("mode"), Stage = loc("stage"), Panels = loc("panels"), Ready = loc("ready"), Random = loc("random"), Leave = loc("leave")}
+      local loc_str = {Level = loc("level"), Mode = loc("mode"), Stage = loc("stage"), Panels = loc("panels"), Ready = loc(config.doAprilFools and "af_ready" or "ready"), Random = loc("random"), Leave = loc("leave")}
       local to_p = loc_str[pstr]
 
       local widthForAlignment = self.button_width

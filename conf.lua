@@ -25,7 +25,7 @@ function love.conf(t)
   t.audio.mic = false                 -- Request and use microphone capabilities in Android (boolean)
   t.audio.mixwithsystem = false       -- Keep background music playing when opening LOVE (boolean, iOS and Android only)
 
-  t.window.title = "Panel Attack"          -- The window title (string)
+  t.window.title = config.doAprilFools and "Panelbase Alpha provides a realistic simulation of life on a natural satellite" or "Panel Attack"        -- The window title (string)
   t.window.icon = nil                      -- Filepath to an image to use as the window's icon (string)
   t.window.width = config.windowWidth            -- The window width (number)
   t.window.height = config.windowHeight          -- The window height (number)

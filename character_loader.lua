@@ -74,6 +74,13 @@ end
 local function add_characters_from_dir_rec(path)
   local lfs = love.filesystem
   local raw_dir_list = FileUtil.getFilteredDirectoryItems(path)
+  if not config.doAprilFools then
+    for _, thing in ipairs(raw_dir_list) do
+      if thing:match("shosoul") then
+        raw_dir_list[_] = nil
+      end
+    end
+  end
   for i, v in ipairs(raw_dir_list) do
     local start_of_v = string.sub(v, 0, string.len(prefix_of_ignored_dirs))
     if start_of_v ~= prefix_of_ignored_dirs then
@@ -92,7 +99,11 @@ local function add_characters_from_dir_rec(path)
           else
             -- logger.trace(current_path.." has been added to the character list!")
             characters[character.id] = character
-            characters_ids[#characters_ids + 1] = character.id
+            if character.id:match("moonbase") then
+              table.insert(characters_ids, 1, character.id)
+            else
+              characters_ids[#characters_ids + 1] = character.id
+            end
           end
         end
       end

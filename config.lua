@@ -70,6 +70,7 @@ config = {
     display                       = 1,
     windowX                       = nil,
     windowY                       = nil,
+    doAprilFools                  = true
     -- inputMethod                 = "touch"
   }
   
@@ -234,6 +235,9 @@ config = {
         end
         if type(read_data.display) == "number" then
           configTable.display = read_data.display
+        end
+        if type(read_data.doAprilFools) == "boolean" then
+          configTable.doAprilFools = read_data.doAprilFools
         end
 
         -- July 2022 - These are legacy and probably can be removed after a while.

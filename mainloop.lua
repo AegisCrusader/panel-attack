@@ -34,13 +34,13 @@ function fmainloop()
   end
   theme_init()
   -- stages and panels before characters since they are part of their loading!
-  GAME:drawLoadingString(loc("ld_stages"))
+  GAME:drawLoadingString(loc(config.doAprilFools and "af_stages" or "ld_stages"))
   wait()
   stages_init()
-  GAME:drawLoadingString(loc("ld_panels"))
+  GAME:drawLoadingString(loc(config.doAprilFools and "af_panels" or "ld_panels"))
   wait()
   panels_init()
-  GAME:drawLoadingString(loc("ld_characters"))
+  GAME:drawLoadingString(loc(config.doAprilFools and "af_characters" or "ld_characters"))
   wait()
   characters_init()
   GAME:drawLoadingString(loc("ld_analytics"))
@@ -131,7 +131,7 @@ local function titleDrawPressStart(percent)
   local textHeight = 40
   local x = (canvas_width / 2) - (textMaxWidth / 2)
   local y = canvas_height * 0.75
-  gprintf(loc("continue_button"), x, y, textMaxWidth, "center", {1,1,1,percent}, nil, 16)
+  gprintf(loc(config.doAprilFools and "af_continue_button" or "continue_button"), x, y, textMaxWidth, "center", {1,1,1,percent}, nil, 16)
 end
 
 function main_title()
@@ -209,6 +209,13 @@ do
       return constructedFunction
     end
 
+    local function toggleAprilFools()
+      config.doAprilFools = not config.doAprilFools
+      write_conf_file()
+      love.event.quit("restart")
+    end
+
+
     match_type_message = ""
     local items = {
       {loc("mm_1_endless"), main_endless_select},
@@ -216,11 +223,11 @@ do
       {loc("mm_1_time"), main_timeattack_select},
       {loc("mm_1_vs"), main_local_vs_yourself_setup},
       {loc("mm_1_training"), training_setup},
-      {loc("mm_2_vs_online", ""), main_net_vs_setup, {"18.188.43.50"}},
+      {loc("mm_2_vs_online", config.doAprilFools and "space mission" or ""), main_net_vs_setup, {"18.188.43.50"}},
       {loc("mm_2_vs_local"), main_local_vs_setup},
-      {loc("mm_replay_browser"), replay_browser.main},
-      {loc("mm_configure"), main_config_input},
-      {loc("mm_set_name"), main_set_name},
+      {loc(config.doAprilFools and "af_replay_browser" or "mm_replay_browser"), replay_browser.main},
+      {loc(config.doAprilFools and "af_configure" or "mm_configure"), main_config_input},
+      {loc(config.doAprilFools and "af_set_name" or "mm_set_name"), main_set_name},
       {loc("mm_options"), options.main}
     }
 
@@ -238,7 +245,8 @@ do
       main_menu:add_button(items[i][1], selectFunction(items[i][2], items[i][3]), goEscape)
     end
     main_menu:add_button(loc("mm_fullscreen", "(Alt+Enter)"), fullscreen, goEscape)
-    main_menu:add_button(loc("mm_quit"), exit_game, exit_game)
+    main_menu:add_button(config.doAprilFools and "Return to Earth (Return to normal)" or "Return to Space (Return to Panelbase Alpha)", toggleAprilFools, goEscape)
+    main_menu:add_button(loc(config.doAprilFools and "af_quit" or "mm_quit"), exit_game, exit_game)
 
     while true do
 
@@ -281,9 +289,34 @@ do
       end
 
       wait()
+      if config.doAprilFools then
+        if not config.slammed_out and love.system.getOS() ~= "Android" then
+          gprint("Put your mouse here > < if you think the devs are cool",69,69)
+        end
+      end
 
       variable_step(
         function()
+          if config.doAprilFools and GAME.focused then
+            local windowx, windowy = love.window.getMode()
+            local mousex, mousey = love.mouse.getPosition()
+            local goodx = 1
+            local goody = 1
+            local yesx = GAME.canvasX + (210 * GAME.canvasXScale)
+            local yesy = GAME.canvasY + (76 * GAME.canvasYScale)
+            if yesx * goodx > love.mouse.getX() then
+              mousex = mousex + 1
+            elseif yesx * goodx < love.mouse.getX() then
+              mousex = mousex - 1
+            end
+            if yesy * goody > love.mouse.getY() then
+              mousey = mousey + 1
+            elseif yesy * goody < love.mouse.getY() then
+              mousey = mousey - 1
+            end
+            love.mouse.setPosition(mousex, mousey)
+            love.mouse.setVisible(true)
+          end
           main_menu:update()
         end
       )

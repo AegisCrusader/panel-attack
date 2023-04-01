@@ -27,6 +27,7 @@ character,,Character,Personnage,Personagem,??????,Personaje,Charakter,Carattere
 stage,,Stage,Terrain,Cenário,ステージ,Escenario,Arena,Scenario
 mode,,Mode,Mode,Modo,モード,Modo,Modus,Modalità
 ready,,Ready,Prêt,Pronto,READY,Listo,Bereit,Pronto
+af_ready,,Enter Space,Prêt,Pronto,READY,Listo,Bereit,Pronto
 random,,Random,Aléatoire,Aleatório,ランダム,Aleatorio,Zufall,Casuale
 leave,,Leave,Quitter,Sair,終わる,Salir,Verlassen,Esci
 pause,,Pause,Pause,Pausa,ポーズ,Pausa,Pause,Pausa
@@ -183,9 +184,13 @@ lb_you,,You,Vous,Você,あなた,Tú,Du,Tu
 ld_puzzles,,Copying puzzles readme...,Copie du fichier readme des puzzles...,Copiando leia-me de quebra-cabeças...,パズルのREADMEをコピーしています...,"Copiando el archivo ""readme"" de puzzles",Kopiere README für Puzzles...,Copia dell'archivio readme dei puzzle...
 ld_replay,,Loading replays...,Chargement des replays...,Carregando replays...,リプレイを読み込みしています…,Cargando repeticiones...,Lade Replays...,Caricamento dei replay...
 ld_theme,,Loading theme...,Chargement du thème...,Carregando temas...,テーマを読み込みしています…,Cargando tema...,Lade Themes...,Caricamento dei temi...
+af_theme,,Loading Moonbase...,Chargement du thème...,Carregando temas...,テーマを読み込みしています…,Cargando tema...,Lade Themes...,Caricamento dei temi...
 ld_characters,,Preloading characters...,Préchargement des personnages...,Pré-carregando personagens...,キャラクターを読み込みしています…,Pre-cargando personajes...,Lade Charaktere...,Pre-caricamento dei personaggi...
+af_characters,,Preloading astronauts...,Préchargement des personnages...,Pré-carregando personagens...,キャラクターを読み込みしています…,Pre-cargando personajes...,Lade Charaktere...,Pre-caricamento dei personaggi...
 ld_stages,,Preloading stages...,Préchargement des terrains...,Pré-carregando cenários...,ステージを読み込みしています…,Pre-cargando escenarios...,Lade Arenen...,Pre-caricamento degli scenari...
+af_stages,,Preloading planets...,Préchargement des terrains...,Pré-carregando cenários...,ステージを読み込みしています…,Pre-cargando escenarios...,Lade Arenen...,Pre-caricamento degli scenari...
 ld_panels,,Loading panels...,Chargement des blocs...,Carregando painéis...,パネルを読み込みしています…,Cargando paneles...,Lade Panels...,Caricamento delle tessere...
+af_panels,,Loading tools...,Chargement des blocs...,Carregando painéis...,パネルを読み込みしています…,Cargando paneles...,Lade Panels...,Caricamento delle tessere...
 ld_analytics,,Loading analytics...,Chargement des statistiques...,Carregando estatísticas...,解析を読み込みしています…,Cargando estadísticas....,Lade Statistikmodul...,Caricamento delle statistiche...
 mm_1_endless,,1P endless,1J infini,1J infinito,1P エンドレス,1J interminable,1P Endlos,1P infinito
 mm_1_puzzle,,1P puzzle,1J puzzle,1J quebra-cabeça,1P パズル,1J Puzzle,1P Puzzle,1P puzzle
@@ -196,13 +201,16 @@ mm_2_vs_local,,2P vs local game,2J vs en local,2J vs jogo local,2P ローカルV
 mm_2_vs_online,,2P vs online %1,2J vs en ligne %1,2J vs online %1,2P オンラインVS %1,2J vs partida en línea %1,2P online %1,2P vs online %1
 mm_2_vs,,2P vs,2J vs,2J vs,2P VS,2J vs,2SP vs,2P vs
 mm_configure,,Configure input,Configurer les touches,Configurar teclas,入力コンフィグ,Configurar teclas,Tastenkonfiguration,Configura i tasti
+af_configure,,Configure spacesuit controls,Configurer les touches,Configurar teclas,入力コンフィグ,Configurar teclas,Tastenkonfiguration,Configura i tasti
 mm_fullscreen,,Fullscreen %1,Plein Écran %1,Tela cheia %1,フルスクリーン %1,Pantalla completa %1,Vollbild %1,Schermo inteto 1%
 mm_music_test,,Music test,Musique test,Teste de música,サウンドテスト,Prueba de música,Musik-Test,Testa la musica
 mm_no_support_fullscreen,,Your graphics card doesn't support canvases for fullscreen,Votre carte graphique ne supporte pas le plein écran,Sua placa de vídeo não suporta tela cheia,お使いのグラフィックカードはフルスクリーンのキャンバスに対応していません,Tu tarjeta gráfica no soporta bordes en pantalla completa.,Deine Grafikkarte unterstützt keine Vollbildauflösungen.,La tua scheda grafica non supporta la modalità schermo intero.
 mm_options,,Options,Options,Opções,オプション,Opciones,Optionen,Opzioni
 mm_quit,,Quit,Quitter,Sair,終わる,Salir,Verlassen,Esci
+af_quit,,Exit Moonbase,Quitter,Sair,終わる,Salir,Verlassen,Esci
 mm_replay_of,,Replay of %1,Replay de %1,Replay de %1,%1のリプレイ,Ver repetición de %1,Replay von %1,Replay di 1%
 mm_set_name,,Set name,Changer de pseudo,Trocar apelido,ユーザー名設定,Definir nombre,Name festlegen,Imposta il nome
+af_set_name,,Set callsign,Changer de pseudo,Trocar apelido,ユーザー名設定,Definir nombre,Name festlegen,Imposta il nome
 nt_ver_err,,PLEASE DOWNLOAD the latest version of the game from #welcome-getting-started at the TetrisAttackOnline Discord http://discord.panelattack.com,S'IL VOUS PLAIT TELECHARGER la dernière version du jeu sur le discord TetrisAttackOnline http://discord.panelattack.comdans #welcome-getting-started,FAÇA O DOWNLOAD da versão mais recente do jogo em # Welcome-Getting-Started no TetrisAttackOnline Discord http://discord.panelattack.com,TetrisAttackOnline Discord http://discord.panelattack.comで、ゲームの最新バージョンを＃welcome-getting-startedからダウンロードして下さい。,POR FAVOR DESCARGA la última version del juego en #welcome-getting-started En el servidor de discord de TetrisAttackOnline:http://discord.panelattack.com,Bitte lade dir die neueste Version des Spiels aus dem #setup-Kanal des Tetris Attack Online Discord-Servers http://discord.panelattack.com oder von der Panel Attack Website http://panelattack.com herunter.,"Per favore, scarica l'ultima versione del gioco da #welcome-getting-started sul server Discord TetrisAttackOnline http://discord.panelattack.com"
 nt_conn_timeout,,Failed to connect to the server.,Impossible de se connecter au serveur.,Falha ao conectar o servidor.,サーバーに接続が失敗しました。,Error al conectarse al servidor.,Es konnte keine Verbindung zum Server hergestellt werden.,Errore di connessione al server.
 nt_msg_err,,"Network error, message could not be decoded: ""%1""","Erreur réseau, le message ne peut pas être décodé: ""%1""","Erro de conexão, a mensagem não pôde ser codificada: ""%1""","ネットワークエラー、メッセージのデコード失敗: ""%1""","Error de red, el mensaje no pudo ser decodificado: ""%1""","Netzwerkfehler: Die folgende Nachricht konnte nicht entschlüsselt werden: %1","Errore di network, il messaggio non può essere decodificato: ""%1"""
@@ -481,7 +489,11 @@ rp_browser_error_unknown_filetype,,Unknown filetype %1. (%2),Type de fichier inc
 rp_browser_error_file_not_found,,File not found! (%1),Fichier introuvable ! (%1),Arquivo não encontrado! (%1),ファイルを見つけませんでした！,¡No se encontró el archivo! (%1),Datei nicht gefunden! (%1),File non trovato! (%1)
 rp_browser_wrong_version,Error shown when trying to load a old version replay,This replay can not be viewed because it was played on a different version of the game.,Cette rediffusion ne peut pas être vue car elle a été jouée sur une version différente du jeu.,Essa repetição não pode ser vista porque foi jogada em uma versão diferente do jogo.,このリプレイは、ゲームの別のバージョンで再生されたため表示できません。,Esta repetición no se puede ver porque se jugó en una versión diferente del juego.,"Diese Wiederholung kann nicht angesehen werden, da sie auf einer älteren Version des Spiels gespielt wurde. Du kannst auf dem Discord-Server nach einer geeigneten Version zum abspielen fragen.",Questo replay non può essere visto perché è stato giocato su una versione diversa del gioco.
 mm_replay_browser,,Replay Browser,Bibliothèque des replays,Navegador de Replays,リプレイブラウザ,Navegador de reproducción,Replay Browser,Navigatore Replay
+af_replay_browser,,Mission Record Browser,Bibliothèque des replays,Navegador de Replays,リプレイブラウザ,Navegador de reproducción,Replay Browser,Navigatore Replay
+
 continue_button,Text shown to press any key to continue,Press Any Button,Appuyer sur un bouton,Pressione qualquer botão,任意のボタンを押します,Pulse cualquier botón,Bitte drücke eine beliebige Taste.,Premere qualsiasi pulsante
+af_continue_button,Text shown to press any key to continue,Enter Moonbase,Appuyer sur un bouton,Pressione qualquer botão,任意のボタンを押します,Pulse cualquier botón,Bitte drücke eine beliebige Taste.,Premere qualsiasi pulsante
+
 player_press_key,,Player %1 press any key,Le joueur %1 appuie sur n'importe quelle touche,O jogador %1 carregue em qualquer tecla,プレーヤー％1　PUSH ANY KEY,Jugador %1 presione cualquier tecla,Spieler %1: Drücke eine beliebige Taste,Il giocatore %1 preme un tasto qualsiasi
 config_input_welcome,Shown on the configure input screen,Set a input configuration for each keyboard / controller you want to be able to use.,Définissez une configuration d'entrée pour chaque clavier/contrôleur que vous souhaitez pouvoir utiliser.,Defina uma configuração de entrada para cada teclado / controlador que deseja usar.,使用するキーボード/コントローラーごとにキーコンフィグを設定して下さい。,Establezca una configuración de entrada para cada teclado / controlador que desee poder utilizar.,Gib eine Eingabekonfiguration für deinen Kontroller oder deine Tastaturen an.,Imposta una configurazione di input per ogni tastiera/controller che desideri utilizzare.
 configuration,Configuration for controller / keyboard setup,Configuration,Configuration,Configuração,キーコンフィグ,Configuración,Konfiguration,Configurazione
